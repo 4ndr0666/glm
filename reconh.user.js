@@ -1,16 +1,13 @@
 // ==UserScript==
 // @name        4ndr0tools - Recon (Headless)
-// @namespace   https://github.com/4ndr0666/userscripts
+// @namespace   https://github.com
 // @author      4ndr0666
-// @version     2.3.7-HEADLESS
-// @description Red-team tool with reliable console-based data exfiltration. Captures all traffic, allowing rule-based blocking and muting. All features and comments integrated.
-// @downloadURL https://github.com/4ndr0666/userscripts/raw/refs/heads/main/4ndr0tools%20-%2_ReconAnalysisEngine.user.js
-// @updateURL   https://github.com/4ndr0666/userscripts/raw/refs/heads/main/4ndr0tools%20-%2_ReconAnalysisEngine.user.js
-// @icon        https://raw.githubusercontent.com/4ndr0666/4ndr0site/refs/heads/main/static/cyanglassarch.png
+// @version     2.3.7
 // @match       *://*/*
 // @run-at      document-start
 // @grant       none
-// @license     MIT
+// @downloadURL https://github.com/4ndr0666/glm/raw/refs/heads/main/reconh.user.js
+// @updateURL   https://github.com/4ndr0666/glm/raw/refs/heads/main/reconh.user.js
 // ==/UserScript==
 
 (() => {
