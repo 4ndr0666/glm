@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         4ndr0tools - Recon 3 [HUD]
-// @namespace    https://github.com/4ndr0666/userscripts
+// @namespace    https://github.com
 // @version      3.0.0
 // @description  Enterprise-grade packet sniffer, console harvester, and endpoint analyzer with Moveable HUD.
-// @author       💀Ψ•-⦑4NDR0666OS⦒-•Ψ💀
+// @author       4NDR0666
 // @match        *://*/*
 // @grant        GM_setClipboard
 // @run-at       document-start
+// @downloadURL  https://github.com/4ndr0666/glm/raw/refs/heads/main/recon3.user.js
+// @updateURL    https://github.com/4ndr0666/glm/raw/refs/heads/main/recon3.user.js
 // ==/UserScript==
 
 (function() {
