@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        4ndr0tools - Recon 2 [Dock]
-// @namespace   https://github.com/4ndr0666/userscripts
+// @namespace   https://github.com
 // @author      4ndr0666
 // @version     8.1.0-Ω
 // @description Alt+R hotkey
@@ -8,6 +8,8 @@
 // @run-at      document-start
 // @grant       GM_setClipboard
 // @grant       unsafeWindow
+// @downloadURL https://github.com/4ndr0666/glm/raw/refs/heads/main/recond.user.js
+// @updateURL   https://github.com/4ndr0666/glm/raw/refs/heads/main/recond.user.js
 // ==/UserScript==
 
 (function() {
