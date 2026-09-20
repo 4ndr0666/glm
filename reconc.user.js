@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name        4ndr0tools - Chimera's Eye Recon Platform
-// @namespace   https://github.com/4ndr0666/userscripts
-// @author      Ψ-Anarch
+// @namespace   https://github.com
+// @author      4ndr0666
 // @version     3.0.0
 // @description A high-fidelity, dual-layer intelligence platform. This script has NO offensive capabilities. It hijacks BOTH Fetch and XMLHttpRequest to passively record all network traffic to a functional UI, guaranteeing capture of the true communication channel.
-// @icon        https://raw.githubusercontent.com/4ndr0666/4ndr0site/refs/heads/main/static/cyanglassarch.png
 // @match       *://*.*.*/*
 // @run-at      document-start
 // @grant       none
-// @license     MIT
+// @downloadURL https://github.com/4ndr0666/glm/raw/refs/heads/main/reconc.user.js
+// @updateURL   https://github.com/4ndr0666/glm/raw/refs/heads/main/reconc.user.js
 // ==/UserScript==
 
 (() => {
