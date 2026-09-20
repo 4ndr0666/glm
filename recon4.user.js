@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        4ndr0tools - Recon 4 [Dock] v8.2.02-Ω
-// @namespace   https://github.com/4ndr0666/userscripts
+// @namespace   https://github.com
 // @author      4ndr0666
 // @version     8.2.02-Ω
 // @description Alt+R hotkey — robust network/console/bridge/identity capture & report
@@ -8,6 +8,8 @@
 // @run-at      document-start
 // @grant       GM_setClipboard
 // @grant       unsafeWindow
+// @downloadURL https://github.com/4ndr0666/glm/raw/refs/heads/main/recon4.user.js
+// @updateURL   https://github.com/4ndr0666/glm/raw/refs/heads/main/recon4.user.js
 // ==/UserScript==
 
 (function() {
