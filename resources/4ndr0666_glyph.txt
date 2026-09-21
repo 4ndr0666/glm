@@ -1,0 +1,30 @@
+export const SplashScreenGlyphIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg 
+    viewBox="0 0 128 128"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    fill="none"
+    stroke="var(--accent-cyan)"
+    strokeWidth="3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path className="glyph-ring-1" d="M 64,12 A 52,52 0 1 1 63.9,12 Z" strokeDasharray="21.78 21.78" strokeWidth="2" />
+    <path className="glyph-ring-2" d="M 64,20 A 44,44 0 1 1 63.9,20 Z" strokeDasharray="10 10" strokeWidth="1.5" opacity="0.7" />
+    <path className="glyph-hex" d="M64 30 L91.3 47 L91.3 81 L64 98 L36.7 81 L36.7 47 Z" />
+    <text
+      x="64"
+      y="67"
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fill="var(--accent-cyan)"
+      stroke="none"
+      fontSize="56"
+      fontWeight="700"
+      fontFamily="'Cinzel Decorative', serif"
+      className="glyph-core-psi"
+    >
+      Ψ
+    </text>
+  </svg>
+);
