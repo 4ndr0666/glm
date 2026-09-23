@@ -1,0 +1,14 @@
+[Prompt Master] Flow credit tracker report (v28.1.1)
+url: [REDACTED SEE USER]· engine: active · anchor: editor · model: Nano Banana 2 Lite
+sources this session — page text: 252 · network payloads: 0 · storage hits: 0 · usage-kind readings: 0 · net observer: installed
+wallet pull: skipped — the store's wallet reading is fresh
+store: loaded v2 · count mode: click-anchored — turns = generation clicks (exact), images = media in the 150s post-click window
+generation clicks: 3 this session · last: Nano Banana 2 Lite · batch x4 (images per generation, read from the model row) · at 2026-09-23T11:03:20.603Z · armed now: Pro (117s left), NB2 (128s left), NB2 Lite (138s left)
+wallet: 835 / — · as of 2026-09-23T08:41:10.794Z
+model Nano Banana 2 Lite: — / — · 0 per generation · turns left: cap not learned yet · 248 turns total (183 today) · 530 images total (360 today) · this session 1 turns / 0 img (click-anchored) · as of 2026-09-23T11:03:20.603Z
+model Nano Banana 2: — / — · 0 per generation · turns left: cap not learned yet · 115 turns total (34 today) · 529 images total (61 today) · this session 1 turns / 0 img (click-anchored) · as of 2026-09-23T11:03:10.904Z
+model Nano Banana Pro: — / — · 0 per generation · turns left: cap not learned yet · 22 turns total (22 today) · 8 images total (8 today) · this session 1 turns / 0 img (click-anchored) · as of 2026-09-23T11:03:00.265Z
+chip shows: NB2 Lite · 183 turns today · cap ? · 360 img today
+credit text visible now: <span> "You've reached your usage limit. Please try again later." | <span> "You have not been charged for this generation." | <model-row> "🍌 Nano Banana 2 Lite crop_16_9 x4" | <button aria> "Start generation" | <gen-button> "Start generation [disabled]"
+self-check: 5/5 PASS
+tip: the function is TURNS LEFT per model — the hidden server-side daily limit. Flow discloses it in exactly two moments: model-picker usage rows ("Leaving 6/16" — canonical, parsed live into the per-model lines above) and the daily-limit notice when a model runs out (it carries the exact reset time — the tracker captures it verbatim above and learns the cap at that moment, so every day after starts from a known limit). Between prints, turns-left = print minus the clicks since it; turns are generation button clicks (exact) and images count only within 150s of a click. Nano Banana generations cost 0 Flow credits (support.google.com/flow/answer/16526234) — the wallet is the account-wide pool shared with Veo/Omni, reported for completeness; it has nothing to do with model runout.
