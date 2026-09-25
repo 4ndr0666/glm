@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # File: dependency-checker.sh
-# Version: 2.2.0 (Field-log gap mitigation on the v2.1.1 golden unit)
+# Version: 2.3.1 (GUP v5.3 field-run gap mitigation on the v2.3.0 golden unit)
 # Desc: Arch Linux — iterative missing-dependency checker, installer, and
 #       dependency-health manager. Audits installed packages via pacman -Dk,
 #       resolves official vs AUR vs virtual-provider classification, audits
@@ -71,12 +71,74 @@
 #   - Fixed: run-config observability omitted pacman.conf IgnorePkg
 #     entries (printed 'Ignore packages: wayland' while 19 entries were
 #     active and steering the heal).
+#
+# Changelog (v2.3.1 — mitigation of the final-summary blind spot exposed by
+# the first v2.3.0 production field run (unattended -x, 2026-09-26: 241
+# ceiling-refused packages summarized as 'no further action needed'); no
+# baseline capability removed):
+#   - Fixed: refused heals were invisible to the final summary. The v2.2.0
+#     outcome-reporting fix wired only the attempted-heal path, so every
+#     no-heal exit of the heal pipeline (unattended safety-ceiling refusal,
+#     operator decline, sync-preflight refusal, yay-unavailable AUR
+#     rebuilds, and unresolvable-provider packages) recorded nothing and
+#     the summary regressed to 'All dependencies satisfied — no further
+#     action needed' while verified-broken packages remained unhealed. All
+#     five no-heal exits now record outstanding debt, and the summary
+#     headline plus report_heal_outcome() surface it with a per-reason
+#     breakdown and remediation guidance (exit-code contract 0/1/2/130
+#     unchanged).
+#   - Fixed: the stale-Python-directory classification logged only a count;
+#     the affected package names are now listed inline (matching the
+#     verified-missing-files audit line) so the operator can see which
+#     package to rebind after a Python transition without log archaeology.
+#   - Added: the unattended safety-ceiling refusal now appends the pending-
+#     upgrade count and a sync-first hint when upgrades are pending —
+#     healing through an ABI transition is the exact contingency the sync
+#     preflight exists to prevent.
+#
+# Changelog (v2.3.0 — GUP v5.3 superset audit, gap mitigation & contingency
+# hardening on the v2.2.0 golden unit; no baseline capability removed):
+#   - Fixed: the EOF/no-TTY input class. v2.1.1 hardened exactly one prompt
+#     (sync preflight); seven interactive reads remained unguarded. Two of
+#     them ran in unguarded call contexts and aborted the whole run with
+#     FATAL under `set -e` when stdin was closed (keyring-repair confirm;
+#     -p fallback ignore-list prompts — cron/timers/piped input); the other
+#     five (heal-ceiling bypass, official-reinstall + AUR-rebuild confirms,
+#     dependency-install confirms) silently relied on an unset variable
+#     that only incidentally evaluated as 'decline'. Every interactive
+#     read is now EOF-safe via read_reply(): EOF is an explicit, designed
+#     decline and the run always reaches the final report (exit-code
+#     contract 0/1/2/130 unchanged).
+#   - Fixed: version-constrained and alternate dependency expressions
+#     ("foo>=2", "foo|bar", "libfoo.so=1-64") bypassed the ignore list
+#     because is_ignored() compared the raw expression; the downstream
+#     installer then normalized to the bare name and could reinstall a
+#     package the operator explicitly ignored. Ignore matching now operates
+#     on every alternative's constraint-stripped name.
+#   - Fixed: --force-heal-all / --help / --version only worked as the FIRST
+#     argument; in any later position getopts parsed them as garbage
+#     clusters and exited 'Invalid option'. A long-option pre-scan now
+#     accepts all three documented long forms at any position.
+#   - Fixed: GPG_AVAILABLE was detected but never consulted — PGP key
+#     recovery now declines fast when gpg is absent instead of spawning
+#     doomed sudo-gpg attempts (declaration/observation realignment).
+#   - Fixed: the one unbounded external call (grep on pacman-conf IgnorePkg
+#     output) is now timeout-bounded like every other external (D9).
+#   - Added: pacman.conf IgnoreGroup is now honored (loaded, logged, and
+#     enforced by the automated heal), closing the gap where pacman's own
+#     ignore directives were only partially respected (IgnorePkg only).
+#   - Added: disk-space preflight for heal batches — bulk reinstallation
+#     aborts reportably when free space falls below the same 1 GiB floor
+#     install_dependencies() has always enforced.
+#   - Added: official dependency installation is now chunked at the same
+#     50-package transaction ceiling used by the heal path, protecting
+#     large ALL_SYSTEM closures from single giant pacman transactions.
 set -euo pipefail
 set -E
 
 # ── Global variables ───────────────────────────────────────────────────────────
 declare -r APP_NAME="dependency-checker"
-declare -r APP_VERSION="2.2.0"
+declare -r APP_VERSION="2.3.1"
 declare -r SYSTEM_LOG_DIR="/var/log/${APP_NAME}"
 declare DEFAULT_LOGFILE="${SYSTEM_LOG_DIR}/${APP_NAME}.log"
 declare LOGFILE="${DEFAULT_LOGFILE}"
@@ -115,6 +177,7 @@ declare -a DEFAULT_IGNORE_PKGS=("wayland")
 declare -a CUSTOM_IGNORE_PKGS=()
 declare -a CUSTOM_IGNORE_GROUPS=()
 declare -a PACMAN_CONF_IGNORE_PKGS=()
+declare -a PACMAN_CONF_IGNORE_GROUPS=()
 declare -a TARGET_PKGLIST=()
 declare -A INSTALLED_PKGS=()
 declare -A OFFICIAL_PKGS=()
@@ -134,6 +197,16 @@ declare -a HEAL_STILL_BROKEN_PKGS=()
 declare -a HEAL_STILL_BROKEN_SOURCES=()
 declare -i HEAL_VERIFIED_RESTORED_COUNT=0
 declare -i HEAL_VERIFIED_CHECKED_COUNT=0
+# v2.3.1: outstanding-debt tracking for heals that never ran. Populated by
+# _heal_package_batch() on every no-heal exit (unattended ceiling refusal,
+# operator decline, sync-preflight refusal, yay-unavailable AUR rebuilds,
+# unresolvable providers); consumed by report_heal_outcome() and the final
+# summary headline so a refused heal can never masquerade as a clean run
+# (field-run evidence: 241 ceiling-refused packages, 2026-09-26).
+declare -a HEAL_UNHEALED_OFFICIAL_PKGS=()
+declare -a HEAL_UNHEALED_AUR_PKGS=()
+declare -a HEAL_UNHEALED_UNKNOWN_PKGS=()
+declare -a HEAL_UNHEALED_REASONS=()
 
 declare -A PACKAGE_PROVIDES=()
 declare -A PROVIDES_INDEX=()
@@ -272,26 +345,41 @@ dependency_package_name() {
 }
 
 is_ignored() {
-	local pkg="$1" ignore_item pkg_groups
+	local raw_dep="$1" ignore_item pkg_groups
+	local -a alt_names=()
+	local alt pkg
 
-	for ignore_item in "${DEFAULT_IGNORE_PKGS[@]:-}" "${CUSTOM_IGNORE_PKGS[@]:-}" "${PACMAN_CONF_IGNORE_PKGS[@]:-}"; do
-		if [[ -n "$ignore_item" && "$pkg" == "$ignore_item" ]]; then
-			log_message "DEBUG" "Package '$pkg' ignored (listed as '$ignore_item')."
-			return 0
-		fi
-	done
+	# v2.3.0: dependency expressions arrive here with version constraints
+	# ("foo>=2", "libfoo.so=1-64") and alternates ("foo|bar"). v2.2.0
+	# compared the raw expression, so an ignored package was bypassed by any
+	# constraint suffix and the downstream installer (which normalizes to the
+	# bare name) could reinstall a package the operator explicitly ignored.
+	# Match every alternative's constraint-stripped name instead.
+	IFS='|' read -r -a alt_names <<<"$raw_dep"
 
-	pkg_groups="${PACKAGE_GROUPS[$pkg]:-}"
-	if [[ -n "$pkg_groups" && ${#CUSTOM_IGNORE_GROUPS[@]} -gt 0 ]]; then
-		for ignore_item in "${CUSTOM_IGNORE_GROUPS[@]:-}"; do
-			if [[ " ${pkg_groups} " == *" ${ignore_item} "* ]]; then
-				log_message "DEBUG" "Package '$pkg' ignored (group '$ignore_item')."
+	for alt in "${alt_names[@]}"; do
+		pkg="$(dependency_package_name "$(trim_whitespace "$alt")")"
+		[[ -z "$pkg" ]] && continue
+
+		for ignore_item in "${DEFAULT_IGNORE_PKGS[@]:-}" "${CUSTOM_IGNORE_PKGS[@]:-}" "${PACMAN_CONF_IGNORE_PKGS[@]:-}"; do
+			if [[ -n "$ignore_item" && "$pkg" == "$ignore_item" ]]; then
+				log_message "DEBUG" "Package '$pkg' ignored (listed as '$ignore_item')."
 				return 0
 			fi
 		done
-	fi
 
-	log_message "DEBUG" "Package '$pkg' not ignored."
+		pkg_groups="${PACKAGE_GROUPS[$pkg]:-}"
+		if [[ -n "$pkg_groups" && $((${#CUSTOM_IGNORE_GROUPS[@]} + ${#PACMAN_CONF_IGNORE_GROUPS[@]})) -gt 0 ]]; then
+			for ignore_item in "${CUSTOM_IGNORE_GROUPS[@]:-}" "${PACMAN_CONF_IGNORE_GROUPS[@]:-}"; do
+				if [[ -n "$ignore_item" && " ${pkg_groups} " == *" ${ignore_item} "* ]]; then
+					log_message "DEBUG" "Package '$pkg' ignored (group '$ignore_item')."
+					return 0
+				fi
+			done
+		fi
+	done
+
+	log_message "DEBUG" "Package '$raw_dep' not ignored."
 	return 1
 }
 
@@ -308,6 +396,19 @@ show_spinner() {
 		printf "\b\b\b\b\b\b" >&2
 	done
 	printf "    \b\b\b\b" >&2
+}
+
+# ── Interactive input ────────────────────────────────────────────────────────
+# v2.3.0: EOF-safe read. A bare `read -r x` returns 1 on EOF/closed stdin,
+# which under `set -e` + the ERR trap aborted the entire run mid-audit
+# (cron/timers/piped input). v2.1.1 hardened only the sync-preflight
+# prompt; v2.3.0 routes every interactive prompt through this helper so
+# EOF consistently means "decline/default" and the run always reaches the
+# final report. Sets REPLY and returns 0 on a successful read; clears
+# REPLY and returns 1 on EOF (callers treat that as a decline).
+read_reply() {
+	REPLY=""
+	read -r REPLY
 }
 
 # ── run_command / run_logged_command ──────────────────────────────────────────
@@ -605,7 +706,12 @@ refresh_pacman_databases() {
 			printf "A backup will be created before keyring/database repair.\n" >&2
 			printf "Are you absolutely sure? (y/N): " >&2
 			local confirm
-			read -r confirm
+			if read_reply; then
+				confirm="$REPLY"
+			else
+				# v2.3.0: EOF/no-TTY fails safe — decline the destructive repair.
+				confirm=""
+			fi
 			if [[ "$confirm" =~ ^[Yy]$ ]]; then
 				if fix_pacman_keyring; then
 					db_refresh_successful=true
@@ -967,7 +1073,7 @@ audit_system_integrity() {
 		done
 		if [[ ${#filtered[@]} -gt 0 ]]; then
 			mapfile -t STALE_PYTHON_ONLY_PKGS < <(printf "%s\n" "${filtered[@]}" | bounded_exec "${SHORT_EXTERNAL_TIMEOUT_SECONDS}" sort -u)
-			log_message "INFO" "Integrity audit: ${#STALE_PYTHON_ONLY_PKGS[@]} package(s) merely own a file under a stale Python directory."
+			log_message "INFO" "Integrity audit: ${#STALE_PYTHON_ONLY_PKGS[@]} package(s) merely own a file under a stale Python directory: ${STALE_PYTHON_ONLY_PKGS[*]}"
 		else
 			STALE_PYTHON_ONLY_PKGS=()
 		fi
@@ -987,6 +1093,13 @@ audit_system_integrity() {
 # are the second-most-common cause after a missing dirmngr.
 import_pgp_keys_for_build_user() {
 	local key server target_user imported=0
+	# v2.3.0: consult the capability probe (GPG_AVAILABLE was detected but
+	# never consumed in v2.2.0) — decline fast instead of spawning doomed
+	# sudo-gpg attempts when gpg is absent.
+	if [[ "${GPG_AVAILABLE}" = false ]]; then
+		log_message "WARN" "Cannot import PGP keys: 'gpg' is not available (checked in check_requirements)."
+		return 1
+	fi
 	if ! target_user="$(unprivileged_user)"; then
 		log_message "WARN" "Cannot import PGP keys: no unprivileged build user identified."
 		return 1
@@ -1123,6 +1236,11 @@ _heal_package_batch() {
 			aur_pkgs+=("$pkg")
 		else
 			log_message "WARN" "Broken package '$pkg' not found in official or AUR caches."
+			# v2.3.1: record the unresolvable package as outstanding debt —
+			# the batch early-returns below when nothing else is actionable,
+			# which previously made these packages vanish from the report.
+			HEAL_UNHEALED_UNKNOWN_PKGS+=("$pkg")
+			HEAL_UNHEALED_REASONS+=("no provider in official/AUR caches")
 		fi
 	done
 
@@ -1139,6 +1257,14 @@ _heal_package_batch() {
 		log_message "INFO" "No actionable ${label} packages remain after protected/ignored filtering."
 		return 0
 	fi
+	# v2.3.0: bulk reinstallation downloads and unpacks real payloads — apply
+	# the same 1 GiB floor install_dependencies() has always enforced, before
+	# the ceiling prompt and the sync preflight, so a space-starved heal aborts
+	# reportably instead of dying inside a pacman transaction.
+	if ! check_disk_space; then
+		log_message "ERROR" "Insufficient disk space for ${label} heal batch — aborting before reinstallation."
+		return 1
+	fi
 	local allow_execution=true
 
 	if ((total_candidates > MAX_AUTO_HEAL_BATCH_SIZE)); then
@@ -1148,25 +1274,49 @@ _heal_package_batch() {
 			printf '\n%sWARNING: %d %s packages flagged for reinstallation/rebuild (exceeds safety threshold of %d).%s\n' \
 				"$WARNING" "$total_candidates" "$label" "$MAX_AUTO_HEAL_BATCH_SIZE" "$RESET" >&2
 			printf '%sThis scale usually indicates a system upgrade transition. Reinstall anyway in safe batches? (y/N): %s' "$YELLOW" "$RESET" >&2
-			read -r confirm
+			if read_reply; then
+				confirm="$REPLY"
+			else
+				# v2.3.0: EOF/no-TTY fails safe — treat as decline.
+				confirm=""
+			fi
 			if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
 				allow_execution=false
 			fi
 		else
-			log_message "ERROR" "${total_candidates} ${label} package(s) flagged for automated heal, exceeding safety ceiling of ${MAX_AUTO_HEAL_BATCH_SIZE} — refusing unattended action. Run with -i or -I to override."
-			printf '%sRefusing automated action on %s: %d packages exceeds the safety ceiling of %d (use -i or -I to override).%s\n' "$WARN" "$label" "$total_candidates" "$MAX_AUTO_HEAL_BATCH_SIZE" "$RESET" >&2
+			# v2.3.1: surface the pending-upgrade contingency in the refusal
+			# itself — healing through an ABI transition is exactly what the
+			# sync preflight exists to prevent (field evidence: a 241-package
+			# ceiling refusal with 34 upgrades pending incl. 'python').
+			local sync_hint=""
+			if ((PENDING_UPGRADES_COUNT > 0)); then
+				sync_hint=" ${PENDING_UPGRADES_COUNT} upgrade(s) pending — sync first: pacman -Syu (the -i preflight offers it)."
+			fi
+			log_message "ERROR" "${total_candidates} ${label} package(s) flagged for automated heal, exceeding safety ceiling of ${MAX_AUTO_HEAL_BATCH_SIZE} — refusing unattended action. Run with -i or -I to override.${sync_hint}"
+			printf '%sRefusing automated action on %s: %d packages exceeds the safety ceiling of %d (use -i or -I to override).%s%s\n' "$WARN" "$label" "$total_candidates" "$MAX_AUTO_HEAL_BATCH_SIZE" "$sync_hint" "$RESET" >&2
 			allow_execution=false
 		fi
 
 		if [[ "$allow_execution" = false ]]; then
+			# v2.3.1: record the refused batch as outstanding debt — v2.2.0's
+			# outcome reporting wired only attempted heals, so a ceiling
+			# refusal or interactive decline vanished from the final summary
+			# ('no further action needed' over unhealed packages).
 			[[ ${#official_pkgs[@]} -gt 0 ]] && {
+				HEAL_UNHEALED_OFFICIAL_PKGS+=("${official_pkgs[@]}")
 				printf '%sOfficial (not acted on):%s\n' "$SKY_BLUE" "$RESET" >&2
 				printf '  %s\n' "${official_pkgs[@]}" >&2
 			}
 			[[ ${#aur_pkgs[@]} -gt 0 ]] && {
+				HEAL_UNHEALED_AUR_PKGS+=("${aur_pkgs[@]}")
 				printf '%sAUR (not acted on):%s\n' "$MAGENTA" "$RESET" >&2
 				printf '  %s\n' "${aur_pkgs[@]}" >&2
 			}
+			if [[ "$INTERACTIVE_MODE" = true ]]; then
+				HEAL_UNHEALED_REASONS+=("operator declined the ${label} batch heal (interactive)")
+			else
+				HEAL_UNHEALED_REASONS+=("${label}: ${total_candidates} packages exceed the unattended safety ceiling of ${MAX_AUTO_HEAL_BATCH_SIZE}")
+			fi
 			return 0
 		fi
 	fi
@@ -1174,6 +1324,12 @@ _heal_package_batch() {
 	# Ensure system is synchronized before performing mass reinstallation
 	if ! sync_system_preflight; then
 		log_message "ERROR" "Preflight sync check failed or was declined — aborting bulk package reinstallation."
+		# v2.3.1: record the aborted batch as outstanding debt (see the
+		# ceiling-refusal recording above — refused heals must survive into
+		# the final summary).
+		[[ ${#official_pkgs[@]} -gt 0 ]] && HEAL_UNHEALED_OFFICIAL_PKGS+=("${official_pkgs[@]}")
+		[[ ${#aur_pkgs[@]} -gt 0 ]] && HEAL_UNHEALED_AUR_PKGS+=("${aur_pkgs[@]}")
+		HEAL_UNHEALED_REASONS+=("${label}: sync preflight refused or failed (pending upgrades)")
 		return 1
 	fi
 
@@ -1182,8 +1338,18 @@ _heal_package_batch() {
 		printf '%sOfficial packages (%s) to reinstall (%d total):%s\n' "$SKY_BLUE" "$label" "${#official_pkgs[@]}" "$RESET" >&2
 		if [[ "$INTERACTIVE_MODE" = true && "$total_candidates" -le "$MAX_AUTO_HEAL_BATCH_SIZE" ]]; then
 			printf '%sProceed to reinstall official packages? (y/N): %s' "$YELLOW" "$RESET" >&2
-			read -r confirm
-			[[ ! "$confirm" =~ ^[Yy]$ ]] && official_pkgs=()
+			if read_reply; then
+				confirm="$REPLY"
+			else
+				# v2.3.0: EOF/no-TTY fails safe — treat as decline.
+				confirm=""
+			fi
+			if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+				# v2.3.1: record the declined reinstallation as outstanding debt.
+				HEAL_UNHEALED_OFFICIAL_PKGS+=("${official_pkgs[@]}")
+				HEAL_UNHEALED_REASONS+=("operator declined official ${label} reinstallation (interactive)")
+				official_pkgs=()
+			fi
 		fi
 
 		if [[ ${#official_pkgs[@]} -gt 0 ]]; then
@@ -1217,8 +1383,18 @@ _heal_package_batch() {
 		printf '%sAUR packages (%s) to rebuild (%d total):%s\n' "$MAGENTA" "$label" "${#aur_pkgs[@]}" "$RESET" >&2
 		if [[ "$INTERACTIVE_MODE" = true && "$total_candidates" -le "$MAX_AUTO_HEAL_BATCH_SIZE" ]]; then
 			printf '%sProceed to rebuild AUR packages? (y/N): %s' "$YELLOW" "$RESET" >&2
-			read -r confirm
-			[[ ! "$confirm" =~ ^[Yy]$ ]] && aur_pkgs=()
+			if read_reply; then
+				confirm="$REPLY"
+			else
+				# v2.3.0: EOF/no-TTY fails safe — treat as decline.
+				confirm=""
+			fi
+			if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+				# v2.3.1: record the declined rebuild as outstanding debt.
+				HEAL_UNHEALED_AUR_PKGS+=("${aur_pkgs[@]}")
+				HEAL_UNHEALED_REASONS+=("operator declined AUR ${label} rebuild (interactive)")
+				aur_pkgs=()
+			fi
 		fi
 
 		if [[ ${#aur_pkgs[@]} -gt 0 ]]; then
@@ -1235,6 +1411,9 @@ _heal_package_batch() {
 				rebuild_aur_packages "${aur_pkgs[@]}" || true
 			else
 				log_message "WARN" "yay not available, cannot rebuild broken AUR packages (${label}): ${aur_pkgs[*]}"
+				# v2.3.1: record the un-rebuildable batch as outstanding debt.
+				HEAL_UNHEALED_AUR_PKGS+=("${aur_pkgs[@]}")
+				HEAL_UNHEALED_REASONS+=("${label}: yay unavailable for AUR rebuilds")
 			fi
 		fi
 	fi
@@ -1647,7 +1826,12 @@ install_dependencies() {
 
 		if [[ "$INTERACTIVE_MODE" = true ]]; then
 			printf '%sProceed to install official dependencies? (y/N): %s' "$YELLOW" "$RESET" >&2
-			read -r confirm
+			if read_reply; then
+				confirm="$REPLY"
+			else
+				# v2.3.0: EOF/no-TTY fails safe — treat as decline.
+				confirm=""
+			fi
 			if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
 				log_message "INFO" "User declined official deps."
 				official_deps=()
@@ -1656,13 +1840,23 @@ install_dependencies() {
 		fi
 
 		if [[ ${#official_deps[@]} -gt 0 ]]; then
-			log_message "INFO" "Installing official: ${official_deps[*]}"
-			if ! run_pacman_install pacman -S --needed --noconfirm "${official_deps[@]}"; then
-				log_message "ERROR" "Failed to install official deps: ${official_deps[*]}"
-				success=1
-			else
-				log_message "INFO" "Official dependencies installed."
-			fi
+			# v2.3.0: chunked official installation — same bounded transaction
+			# size the heal path has used since v2.1.0; --needed semantics are
+			# correct (and preserved) for fresh dependency installation.
+			local -i offset=0 chunk_seq=0
+			local -i total_chunks=$(((${#official_deps[@]} + REINSTALL_CHUNK_SIZE - 1) / REINSTALL_CHUNK_SIZE))
+			while ((offset < ${#official_deps[@]})); do
+				local -a chunk=("${official_deps[@]:offset:REINSTALL_CHUNK_SIZE}")
+				chunk_seq=$((chunk_seq + 1))
+				log_message "INFO" "Installing official chunk ${chunk_seq}/${total_chunks} (packages $((offset + 1))-$((offset + ${#chunk[@]})) of ${#official_deps[@]}): ${chunk[*]}"
+				if ! run_pacman_install pacman -S --needed --noconfirm "${chunk[@]}"; then
+					log_message "ERROR" "Failed to install official chunk ${chunk_seq}/${total_chunks}: ${chunk[*]}"
+					success=1
+				else
+					log_message "INFO" "Official dependencies installed (chunk ${chunk_seq}/${total_chunks})."
+				fi
+				offset=$((offset + REINSTALL_CHUNK_SIZE))
+			done
 		fi
 	fi
 
@@ -1673,7 +1867,12 @@ install_dependencies() {
 		if [[ "$YAY_AVAILABLE" = true ]]; then
 			if [[ "$INTERACTIVE_MODE" = true ]]; then
 				printf '%sProceed to install AUR dependencies? (y/N): %s' "$YELLOW" "$RESET" >&2
-				read -r confirm
+				if read_reply; then
+					confirm="$REPLY"
+				else
+					# v2.3.0: EOF/no-TTY fails safe — treat as decline.
+					confirm=""
+				fi
 				if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
 					log_message "INFO" "User declined AUR deps."
 					aur_deps=()
@@ -1843,7 +2042,12 @@ prompt_ignore_lists() {
 			cur_pkgs_str="${cur_pkgs_str%,}"
 		fi
 		printf "Additional packages to ignore (comma-separated) [%s]: " "$cur_pkgs_str" >&2
-		read -r user_pkgs
+		if read_reply; then
+			user_pkgs="$REPLY"
+		else
+			# v2.3.0: EOF/no-TTY fails safe — treat as no additional input.
+			user_pkgs=""
+		fi
 		if [[ -n "$user_pkgs" ]]; then
 			old_ifs="$IFS"
 			IFS=',' read -r -a tmp_pkgs <<<"$user_pkgs"
@@ -1860,7 +2064,12 @@ prompt_ignore_lists() {
 			cur_groups_str="${cur_groups_str%,}"
 		fi
 		printf "Additional groups to ignore (comma-separated) [%s]: " "$cur_groups_str" >&2
-		read -r user_groups
+		if read_reply; then
+			user_groups="$REPLY"
+		else
+			# v2.3.0: EOF/no-TTY fails safe — treat as no additional input.
+			user_groups=""
+		fi
 		if [[ -n "$user_groups" ]]; then
 			old_ifs="$IFS"
 			IFS=',' read -r -a tmp_groups <<<"$user_groups"
@@ -1962,6 +2171,41 @@ report_orphans() {
 }
 
 report_heal_outcome() {
+	# v2.3.1: outstanding-debt reporting runs first. Heals that never ran
+	# (unattended ceiling refusal, operator decline, sync-preflight refusal,
+	# yay-unavailable AUR rebuilds, unresolvable providers) record their
+	# casualties in the HEAL_UNHEALED_* arrays; without this block the final
+	# summary regressed to 'All dependencies satisfied — no further action
+	# needed' while verified-broken packages remained unhealed (field
+	# evidence: 241 ceiling-refused packages, 2026-09-26). Ordering: debt is
+	# reported before attempted-heal outcomes so a partial run reads "what
+	# was never tried" ahead of "what was tried and how it ended".
+	local -i unhealed_total=$(( ${#HEAL_UNHEALED_OFFICIAL_PKGS[@]} + ${#HEAL_UNHEALED_AUR_PKGS[@]} + ${#HEAL_UNHEALED_UNKNOWN_PKGS[@]} ))
+	if (( unhealed_total > 0 )); then
+		printf '%sIntegrity heal OUTSTANDING — %d package(s) with missing files were never healed:%s\n' "$WARN" "$unhealed_total" "$RESET"
+		local -A reason_seen=()
+		local reason
+		for reason in "${HEAL_UNHEALED_REASONS[@]}"; do
+			[[ -n "${reason_seen[$reason]:-}" ]] && continue
+			reason_seen["$reason"]=1
+			printf '  reason: %s\n' "$reason"
+		done
+		[[ ${#HEAL_UNHEALED_OFFICIAL_PKGS[@]} -gt 0 ]] && {
+			printf '%sOfficial (never healed):%s\n' "$SKY_BLUE" "$RESET"
+			printf '  %s\n' "${HEAL_UNHEALED_OFFICIAL_PKGS[@]}"
+		}
+		[[ ${#HEAL_UNHEALED_AUR_PKGS[@]} -gt 0 ]] && {
+			printf '%sAUR (never rebuilt):%s\n' "$MAGENTA" "$RESET"
+			printf '  %s\n' "${HEAL_UNHEALED_AUR_PKGS[@]}"
+		}
+		[[ ${#HEAL_UNHEALED_UNKNOWN_PKGS[@]} -gt 0 ]] && {
+			printf '%sUnresolvable (no provider in official/AUR caches):%s\n' "$WARN" "$RESET"
+			printf '  %s\n' "${HEAL_UNHEALED_UNKNOWN_PKGS[@]}"
+		}
+		printf '%sRemediation:%s\n' "$GREEN" "$RESET"
+		printf '  %sRerun with -i (interactive review) or -I (unattended override; syncs first).%s\n' "$CAT" "$RESET"
+		printf "\n"
+	fi
 	if [[ ${#HEAL_ATTEMPTED_OFFICIAL_PKGS[@]} -eq 0 && ${#HEAL_ATTEMPTED_AUR_PKGS[@]} -eq 0 ]]; then
 		return 0
 	fi
@@ -2044,19 +2288,41 @@ emit_final_verdict() {
 # ── Arguments parsing & help ──────────────────────────────────────────────────
 parse_arguments() {
 	log_message "INFO" "Parsing arguments: $*"
-	[[ "${1:-}" == "--help" || "${1:-}" == "-h" ]] && {
-		print_help
-		exit 0
-	}
-	[[ "${1:-}" == "--version" ]] && {
-		print_version
-		exit 0
-	}
-
-	if [[ "${1:-}" == "--force-heal-all" ]]; then
-		FORCE_HEAL_ALL=true
-		log_message "INFO" "--force-heal-all: safety ceiling and sync preflight overrides enabled."
-		shift
+	# v2.3.0: long-option pre-scan. v2.2.0 recognized the documented long
+	# forms only in the FIRST position; anywhere else getopts parsed them as
+	# garbage clusters and exited 'Invalid option: --'. All three long forms
+	# are now accepted at any position (but never after the '--' separator,
+	# which preserves positional-argument semantics) and stripped before
+	# getopts.
+	local -a forward_args=()
+	local pre_arg long_scan=true
+	for pre_arg in "$@"; do
+		if [[ "$long_scan" = true ]]; then
+			case "$pre_arg" in
+			--force-heal-all)
+				FORCE_HEAL_ALL=true
+				log_message "INFO" "--force-heal-all: safety ceiling and sync preflight overrides enabled."
+				;;
+			--help)
+				print_help
+				exit 0
+				;;
+			--version)
+				print_version
+				exit 0
+				;;
+			--|*)
+				[[ "$pre_arg" == "--" ]] && long_scan=false
+				forward_args+=("$pre_arg")
+				;;
+			esac
+		else
+			forward_args+=("$pre_arg")
+		fi
+	done
+	set --
+	if [[ ${#forward_args[@]} -gt 0 ]]; then
+		set -- "${forward_args[@]}"
 	fi
 
 	local opt packages_arg="" groups_arg=""
@@ -2236,8 +2502,16 @@ main() {
 
 	check_requirements
 	if LC_ALL=C run_command pacman-conf IgnorePkg; then
-		mapfile -t PACMAN_CONF_IGNORE_PKGS < <(printf '%s' "$CMD_OUTPUT" | grep -v '^[[:space:]]*$' || true)
+		# v2.3.0: grep is timeout-bounded like every other external (D9).
+		mapfile -t PACMAN_CONF_IGNORE_PKGS < <(printf '%s' "$CMD_OUTPUT" | bounded_exec "${SHORT_EXTERNAL_TIMEOUT_SECONDS}" grep -v '^[[:space:]]*$' || true)
 		log_message "INFO" "Loaded ${#PACMAN_CONF_IGNORE_PKGS[@]} package(s) from pacman.conf's IgnorePkg."
+	fi
+	# v2.3.0: honor pacman.conf IgnoreGroup — the automated heal previously
+	# respected IgnorePkg only, so a group-level ignore directive could not
+	# stop an unattended bulk reinstall of packages inside that group.
+	if LC_ALL=C run_command pacman-conf IgnoreGroup; then
+		mapfile -t PACMAN_CONF_IGNORE_GROUPS < <(printf '%s' "$CMD_OUTPUT" | bounded_exec "${SHORT_EXTERNAL_TIMEOUT_SECONDS}" grep -v '^[[:space:]]*$' || true)
+		log_message "INFO" "Loaded ${#PACMAN_CONF_IGNORE_GROUPS[@]} group(s) from pacman.conf's IgnoreGroup."
 	fi
 
 	wait_for_pacman_lock
@@ -2257,7 +2531,7 @@ main() {
 		ignored_pkgs_str="${ignored_pkgs_str:+${ignored_pkgs_str},}${item}"
 	done
 	ignored_groups_str=""
-	for item in "${CUSTOM_IGNORE_GROUPS[@]:-}"; do
+	for item in "${CUSTOM_IGNORE_GROUPS[@]:-}" "${PACMAN_CONF_IGNORE_GROUPS[@]:-}"; do
 		[[ -z "$item" ]] && continue
 		ignored_groups_str="${ignored_groups_str:+${ignored_groups_str},}${item}"
 	done
@@ -2282,7 +2556,11 @@ main() {
 	printf '\n%s## Dependency Check Summary ##%s\n' "$GREEN" "$RESET"
 
 	if [[ ${#final_missing[@]} -eq 0 ]]; then
-		if [[ ${#HEAL_STILL_BROKEN_PKGS[@]} -eq 0 ]]; then
+		# v2.3.1: unhealed integrity debt (refused, declined, or unresolvable
+		# heals) now suppresses the 'no further action needed' verdict exactly
+		# as still-broken attempted heals do (field evidence: the 2026-09-26
+		# run printed 'no further action needed' over 241 unhealed packages).
+		if [[ ${#HEAL_STILL_BROKEN_PKGS[@]} -eq 0 && $((${#HEAL_UNHEALED_OFFICIAL_PKGS[@]} + ${#HEAL_UNHEALED_AUR_PKGS[@]} + ${#HEAL_UNHEALED_UNKNOWN_PKGS[@]})) -eq 0 ]]; then
 			printf '%s All dependencies satisfied — no further action needed.%s\n' "$OK" "$RESET"
 		else
 			printf '%s All dependencies satisfied (see integrity-heal status below).%s\n' "$OK" "$RESET"
