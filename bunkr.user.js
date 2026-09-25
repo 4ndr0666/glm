@@ -1,16 +1,16 @@
 // ==UserScript==
 // @name         4ndr0tools - Bunkr++BETA
 // @namespace    https://github.com/4ndr0666/userscripts
-// @version      7.0.0
+// @version      7.2.0
 // @author       4ndr0666
-// @description  Direct URL routing, auto-sort, hide visited, bypass dl gateway, bulk download, m3u8/CDN URL aggregation, broken-link repair, power-user hotkeys
+// @description  Direct URL routing, auto-sort, hide visited, bypass dl gateway, bulk download, m3u8/CDN URL aggregation, broken-link repair, power-user hotkeys, LinkMaster-grade m3u8 stream resolution, web-archive dead-CDN resurrection (archive.org / archive.is)
 // @icon         data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%20fill%3D%22none%22%20stroke%3D%22%2300E5FF%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M%2064%2C12%20A%2052%2C52%200%201%201%2063.9%2C12%20Z%22%20stroke-dasharray%3D%2221.78%2021.78%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M%2064%2C20%20A%2044%2C44%200%201%201%2063.9%2C20%20Z%22%20stroke-dasharray%3D%2210%2010%22%20stroke-width%3D%221.5%22%20opacity%3D%220.7%22%2F%3E%3Cpath%20d%3D%22M64%2030%20L91.3%2047%20L91.3%2081%20L64%2098%20L36.7%2081%20L36.7%2047%20Z%22%2F%3E%3Ctext%20x%3D%2264%22%20y%3D%2267%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%20fill%3D%22%2300E5FF%22%20stroke%3D%22none%22%20font-size%3D%2256%22%20font-weight%3D%22700%22%20font-family%3D%22Cinzel%20Decorative%2C%20serif%22%3E%CE%A8%3C%2Ftext%3E%3C%2Fsvg%3E
-// @include      /^[^:]*?:\/\/bunkr\.[^/]*?\/.*?$/
-// @include      /^[^:]*?:\/\/[^/]*?\.bunkr\.[^/]*?\/.*?$/
+// v7.1.0 [LM-B3]: bunkr{1,3} host family (bunkr / bunkrr / bunkrrr) — the
+// baseline pair-wise @include set could never match live bunkrrr.org hosts.
+// @include      /^[^:]*?:\/\/bunkr{1,3}\.[^/]*?\/.*?$/
+// @include      /^[^:]*?:\/\/[^/]*?\.bunkr{1,3}\.[^/]*?\/.*?$/
 // @include      /^[^:]*?:\/\/bunker\.[^/]*?\/.*?$/
 // @include      /^[^:]*?:\/\/[^/]*?\.bunker\.[^/]*?\/.*?$/
-// @include      /^[^:]*?:\/\/bunkrr\.[^/]*?\/.*?$/
-// @include      /^[^:]*?:\/\/[^/]*?\.bunkrr\.[^/]*?\/.*?$/
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -32,10 +32,61 @@
 // declared dependency (alignment: declaration with no observed consumer).
 // GAP 16 fix: console banner now reports the true header version (baseline
 // banner was frozen at v5.9.0-Ψ while @version read 6.0.1).
+//
+// v7.1.0-Ψ superset revision (GUP v5.3 audited).
+// MIGRATION — LinkMasterBETA v5.1.1 (the operator's documented fallback
+// whenever this script fails to acquire the m3u8/CDN URL):
+// resolveBunkrStreamLink's hardened engine is folded into
+// resolveDomStreamUrl —
+//   [LM-B3] every extracted candidate resolves against the page it was
+//           scraped from (DOMParser documents resolve against about:blank;
+//           relative CDN paths were mangled into pseudo-URLs).
+//   [LM-G8] CDN anchor selectors accept token/query-string links
+//           (href*='.mp4?' variants) — real bunkr CDN links carry signed
+//           query strings, which href$='.mp4' can never match. This was
+//           the exact failure mode that forced the LinkMaster fallback.
+//   [LM-G6] onabort handlers settle both resolver hops — an aborted GM
+//           transport can no longer leave the calling glyph spinning.
+// GAP 21 fix: the 3-hop signed pipeline (getNumericId → callMainAPI →
+//   getSignedToken) lived inside initBulkEngine's album-only guard, so
+//   resolveBulkFile stayed null on the /v/ /f/ /d/ single-asset pages
+//   where the DL/Stream glyphs live — Tier B was structurally dead code
+//   there. The pipeline is hoisted to module scope (Module 6.5) with a
+//   shared abort registry; every page now resolves signed URLs.
+// GAP 22 fix: copyUrlLedger read rec.url off ledger records whose URL
+//   lives in the Map key — every ledger export copied "undefined" N times.
+// GAP 23 fix: cross-origin <a download> clicks have the download attribute
+//   ignored by the browser; the single-file DL vector now prefers
+//   GM_download (hard 60s bound, abort-registered) with the anchor path
+//   retained as the unconditional fallback.
+//
+// v7.2.0-Ψ superset revision (GUP v5.3 audited).
+// Ψ-ARCHIVE (Module 6.9) — vision item "broken url cdn resolution to
+// archive.org, archive.is, etc.": bunkr assets die (host rotation, DMCA
+// purges, deletions) while their page/CDN artifacts live on in the public
+// web archives. When every live resolution tier fails, the glyphs now
+// fall through to an archive tier —
+//   [A1] archive.org Wayback availability API, then the authoritative CDX
+//        index (statuscode:200 captures only).
+//   [A2] the archive.today family (archive.ph → archive.is →
+//        archive.today) via the /newest/<url> redirect probe with mirror
+//        rotation on transport failure only.
+//   [A3] the snapshot PAGE URL is fed back through resolveDomStreamUrl,
+//        so the battle-tested DOM extraction chain runs against the
+//        archived copy — wayback-rewired hrefs classify through the
+//        unwrapWebArchiveUrl gateway.
+//   [A4] dead-image repair gains a budgeted last-chance wayback swap.
+//   [A5] the bulk engine retries ERR items once through the archive tier.
+//   [A6] 'A' hotkey + menu audit command probe the whole URL ledger
+//        against the archives and copy every snapshot URL found.
+// Every probe is GM-privileged, hard-bounded at 12s (parity with the DOM
+// resolver hops), settles on abort [LM-G6], registers in the shared abort
+// registry (GAP 9), and degrades to null — the archive tier can never
+// hang a glyph spinner or throw into the live path.
 
 (function () {
     'use strict';
-    console.log('%c[4NDR0tools] Bunkr++ v7.0.0-Ψ', 'color:#00E5FF; font-family:monospace; font-weight:bold;');
+    console.log('%c[4NDR0tools] Bunkr++ v7.2.0-Ψ', 'color:#00E5FF; font-family:monospace; font-weight:bold;');
 
     // =========================================================================
     // MODULE 0.1: SYNCHRONOUS ENVIRONMENT MOCKING (Sandbox Escape)
@@ -215,6 +266,18 @@
         showToast(`⏱ Delay = ${n}ms — applied on next engine init.`, 4000);
     });
 
+    // v7.2.0: web-archive fallback master switch. Gates the glyph Tier D,
+    // bulk [A5] retry and dead-image [A4] last-chance probes; the explicit
+    // ledger audit command (Module 6.9) is always allowed — a direct user
+    // invocation must never be silenced by a default.
+    const ARCHIVE_ENABLED = () => _settings.archiveFallback !== false;
+
+    GM_registerMenuCommand('🗄 Web-Archive Fallback: ON/OFF', () => {
+        const next = !ARCHIVE_ENABLED();
+        setSetting('archiveFallback', next);
+        showToast(`🗄 Web-archive fallback ${next ? 'ENABLED' : 'DISABLED'} — dead-link tier ${next ? 'armed' : 'off'}.`, 4000, true);
+    });
+
     // =========================================================================
     // INTERNAL STATE & CONSTANTS
     // =========================================================================
@@ -224,7 +287,10 @@
     let _sortExecuted   = false;
     let _debounceTimer  = null;
 
-    // Module-scope reference populated by initBulkEngine so M7 grid glyphs can call it
+    // Module-scope reference, populated by Module 6.5 at eval time (GAP 21:
+    // was populated only inside initBulkEngine's album guard, which left
+    // Tier B of both single-asset glyphs dead on /v//f//d/ pages). M7 grid
+    // glyphs and both single-asset glyph tiers now call it on every page.
     let resolveBulkFile = null;
 
     const VISITED_KEY   = 'psi_visited_assets';
@@ -235,6 +301,12 @@
     // URL ledger (Module 3.5) — insertion-ordered Map, FIFO-capped
     const URL_LEDGER_MAX = 500;
     const _urlLedger     = new Map();
+
+    // v7.1.0: page-epoch watermark — playlist lookups for the CURRENT asset
+    // only consider captures at/after this timestamp, so an SPA route to a
+    // different video can never be handed the previous video's playlist.
+    // Reset by onSpaNav (Module 10).
+    let _ledgerEpoch = Date.now();
 
     function ensureRelative(el) {
         if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
@@ -629,9 +701,29 @@
         return /\.m3u8(\?|#|$)/i.test(url);
     }
 
+    // v7.2.0 [A3]: wayback URL unwrapper — the gateway through which every
+    // archived artifact is classified. Wayback rewrites every href it
+    // serves into https://web.archive.org/web/<timestamp>/<original>, so a
+    // dead CDN file inside a snapshot page is still recognisably a CDN
+    // file once the wrapper is stripped. Accepts the timestamp/modifier
+    // segment in any of its legal shapes (14-digit, shorthand digits,
+    // id_/if_ flags, trailing-* wildcard forms).
+    function unwrapWebArchiveUrl(url) {
+        if (!url || typeof url !== 'string') return null;
+        const m = url.match(
+            /^https?:\/\/(?:web\.)?archive\.org\/web\/(?:[^\/?#]+\/)?(https?:\/\/.+)$/i
+        );
+        return m ? m[1] : null;
+    }
+
     function recordUrl(url, source) {
         if (!url || typeof url !== 'string') return;
-        const kind = isMediaPlaylist(url) ? 'm3u8' : (isCdnUrl(url) ? 'file' : null);
+        // v7.2.0 [A3]: archived URLs classify by their EMBEDDED original —
+        // an archived CDN file is still a CDN file for ledger/export
+        // purposes, and the wayback wrapper stays the Map key because it
+        // is the URL that actually serves bytes.
+        const classify = unwrapWebArchiveUrl(url) || url;
+        const kind = isMediaPlaylist(classify) ? 'm3u8' : (isCdnUrl(classify) ? 'file' : null);
         if (!kind) return;
         if (_urlLedger.has(url)) {
             const rec = _urlLedger.get(url);
@@ -655,14 +747,45 @@
         }
         const playlists = [];
         const files = [];
-        for (const rec of _urlLedger.values()) {
-            if (rec.kind === 'm3u8') playlists.push(rec.url); else files.push(rec.url);
+        // GAP 22 fix: the URL lives in the Map key, not the record — the
+        // baseline iterated .values() and read rec.url, exporting the
+        // string "undefined" N times instead of the captured URLs.
+        for (const [url, rec] of _urlLedger) {
+            if (rec.kind === 'm3u8') playlists.push(url); else files.push(url);
         }
         robustCopy(playlists.concat(files).join('\n'), null);
         showToast(`📋 Ledger copied: ${playlists.length} m3u8 / ${files.length} CDN URLs.`, 4000, true);
     }
 
+    // v7.1.0: freshest playlist at/after a timestamp — the STREAM glyph's
+    // HLS fast-path. hls.js surfaces the m3u8 only through network traffic,
+    // which the Module 3 sniffer records here as it loads.
+    function latestPlaylistFromLedger(sinceTs = 0) {
+        let bestUrl = null;
+        let bestTs  = 0;
+        for (const [url, rec] of _urlLedger) {
+            if (rec.kind !== 'm3u8' || rec.ts < sinceTs) continue;
+            if (rec.ts >= bestTs) { bestTs = rec.ts; bestUrl = url; }
+        }
+        return bestUrl;
+    }
+
     GM_registerMenuCommand('📋 Copy URL Ledger (m3u8 + CDN)', copyUrlLedger);
+
+    // v7.1.0: the vision's "copying of the m3u8 url" as a first-class export,
+    // not a mixed-list byproduct.
+    GM_registerMenuCommand('📋 Copy m3u8 URLs Only', () => {
+        const playlists = [];
+        for (const [url, rec] of _urlLedger) {
+            if (rec.kind === 'm3u8') playlists.push(url);
+        }
+        if (!playlists.length) {
+            showToast('No m3u8 playlists captured yet — play or resolve a video first.', 4000);
+            return;
+        }
+        robustCopy(playlists.join('\n'), null);
+        showToast(`📋 ${playlists.length} m3u8 URL(s) copied.`, 4000, true);
+    });
 
     // =========================================================================
     // MODULE 4: STATE-AWARE SORT HIJACK (Polled)
@@ -936,24 +1059,76 @@
 
     function isCdnUrl(url) {
         if (!url || typeof url !== 'string') return false;
-        return /(cdn\.cr|bunkr|bunkrr|scdn\.st|media-)/i.test(url) &&
+        // v7.1.0 [LM-B3]: bunkr{1,3} makes the bunkr/bunkrr/bunkrrr family
+        // explicit (the old 'bunkr|bunkrr' pair substring-matched bunkrrr
+        // anyway; coverage is unchanged, intent is now declared).
+        return /(cdn\.cr|bunkr{1,3}|scdn\.st|media-)/i.test(url) &&
                /\.(mp4|webm|mkv|mov|avi|zip|rar|7z|jpg|jpeg|png|gif|webp|m3u8)(\?|#|$)/i.test(url);
     }
 
     function nativeDownload(url, hint) {
-        const name = hint ||
+        const name = (hint ||
             url.split('/').pop().split('?')[0].split('#')[0] ||
-            'bunkr_download';
+            'bunkr_download')
+            .replace(/[\\/:*?"<>|]/g, '_')  // parity with downloadBulkFile sanitization
+            .substring(0, 200);
         console.log(`[Ψ-4NDR0666] Initiating native download: ${name}`);
         recordUrl(url, 'download'); // v7: every download vector feeds the ledger
         showToast(`⦒ █▓░ Download initiated: ${name}`, 3000, true);
-        const a = document.createElement('a');
-        a.href     = url;
-        a.download = name;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => a.remove(), 1000);
+
+        // Baseline path — retained unconditionally as the fallback.
+        // (Cross-origin <a download> clicks have the download attribute
+        // ignored by the browser's same-origin policy, but the CDN's
+        // Content-Disposition usually settles it.)
+        const anchorFallback = () => {
+            const a = document.createElement('a');
+            a.href     = url;
+            a.download = name;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => a.remove(), 1000);
+        };
+
+        // GAP 23 fix: prefer the privileged manager download channel when
+        // available — hard-bounded (Gate 4.2, 60s like the bulk engine) and
+        // registered in the shared abort registry so the bulk STOP surface
+        // can abort it. Any failure falls back to the anchor path above.
+        if (typeof GM_download !== 'function') { anchorFallback(); return; }
+
+        let settled = false;
+        let hardTimeout = null;
+        const control = GM_download({
+            url,
+            name,
+            saveAs: false,
+            headers: { 'Referer': 'https://dl.bunkr.cr/' },
+            onerror(e) {
+                if (settled) return;
+                settled = true;
+                if (hardTimeout) clearTimeout(hardTimeout);
+                _activeRequests.delete(control);
+                const reason = (e && (e.error || e.message)) ? (e.error || e.message) : 'unknown GM_download error';
+                console.warn(`[Ψ-4NDR0666] GM_download failed (${String(reason)}) — anchor fallback engaging.`);
+                anchorFallback();
+            },
+            onload() {
+                if (settled) return;
+                settled = true;
+                if (hardTimeout) clearTimeout(hardTimeout);
+                _activeRequests.delete(control);
+                console.log(`[Ψ-4NDR0666] GM_download complete: ${name}`);
+            },
+        });
+        _activeRequests.add(control);
+        hardTimeout = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            try { control && typeof control.abort === 'function' && control.abort(); } catch (_) { /* EAFP */ }
+            _activeRequests.delete(control);
+            console.warn('[Ψ-4NDR0666] GM_download hard-bounded at 60s — anchor fallback engaging.');
+            anchorFallback();
+        }, 60000);
     }
 
     function robustCopy(text, overlay) {
@@ -1012,31 +1187,126 @@
     // MODULE 6.4: DOM-DRIVEN CDN EXTRACTOR
     // =========================================================================
     /**
-     * resolveDomStreamUrl — DOM-first single-asset CDN URL resolver.
+     * resolveDomStreamUrl — DOM-first single-asset CDN/m3u8 URL resolver.
+     *
+     * v7.1.0 MIGRATION: the resolver core is the hardened engine from
+     * LinkMasterBETA v5.1.1's resolveBunkrStreamLink — the operator's
+     * documented fallback whenever this script fails to acquire the
+     * m3u8/CDN URL. Three of its fixes are load-bearing here:
+     *   [LM-B3] every extracted candidate is resolved against the page it
+     *           was scraped from (new URL(raw, pageUrl)) — DOMParser
+     *           documents resolve against about:blank, so relative CDN
+     *           paths were mangled into unusable pseudo-URLs (the baseline
+     *           read .href/.content directly off the parsed document).
+     *   [LM-G8] CDN anchor selectors accept token/query-string links
+     *           (href*='.mp4?' variants) — real bunkr CDN links carry
+     *           signed query strings which href$='.mp4' can NEVER match.
+     *           Both hops of the baseline chain had exactly this defect;
+     *           it is the failure mode that forced the LinkMaster fallback.
+     *   [LM-G6] onabort handlers settle both hops — an aborted GM
+     *           transport can no longer leave the calling glyph spinner
+     *           stuck forever.
+     * v7.1.0 additions: m3u8 playlists are accepted regardless of host
+     * family (bunkr rotates HLS CDN hosts); source[type='application/
+     * x-mpegURL'] is honored; inline <script> text is swept for .m3u8 URLs
+     * (hls.js embeds / JSON blobs); preferPlaylist reorders the chain so
+     * the STREAM glyph receives the HLS playlist while the DL glyph still
+     * receives the file URL.
      *
      * Used ONLY for single-asset view pages (/v/, /f/, /d/) where
      * video.currentSrc may not yet be populated. Falls back through:
+     *   0. targetUrl already CDN/playlist · sniffer fast-path · (playlist
+     *      preference) freshest sniffed playlist for this page epoch
      *   1. OG video meta tag
-     *   2. <source src> / <video src>
-     *   3. Direct CDN anchor in fetched HTML
-     *   4. Gateway page #download-btn (second GM_xmlhttpRequest hop)
+     *   2. <source type='application/x-mpegURL'>
+     *   3. <source src> / <video src> (blob: rejected)
+     *   4. inline-script .m3u8 sweep
+     *   5. Direct CDN anchor in fetched HTML (query-tolerant)
+     *   6. Gateway page #download-btn (second GM_xmlhttpRequest hop)
      *
-     * For grid items, use resolveBulkFile() which uses the authenticated
-     * dl.bunkr.cr API pipeline and is far more reliable.
+     * For signed/authenticated resolution prefer resolveBulkFile() (the
+     * module-scope 3-hop pipeline, armed on every page as of v7.1.0),
+     * which remains the most reliable source.
      *
      * v7: every successful resolution is folded into the Module 3.5 URL
      * ledger so DOM-sourced URLs aggregate with sniffed/API-sourced ones.
      */
-    async function resolveDomStreamUrl(targetUrl) {
+    async function resolveDomStreamUrl(targetUrl, { preferPlaylist = false } = {}) {
         if (!targetUrl) return null;
-        if (isCdnUrl(targetUrl)) return targetUrl;
+        if (isCdnUrl(targetUrl) || isMediaPlaylist(targetUrl)) return targetUrl;
+
+        // v7.2.0 [A3]: a wayback-wrapped media URL IS the media (wayback
+        // serves the bytes at the wrapper URL) — settle immediately
+        // instead of re-fetching the whole chain for it.
+        const targetUnwrapped = unwrapWebArchiveUrl(targetUrl);
+        if (targetUnwrapped && (isCdnUrl(targetUnwrapped) || isMediaPlaylist(targetUnwrapped))) {
+            recordUrl(targetUrl, 'archive');
+            return targetUrl;
+        }
 
         // Also check M3 passive intercept cache
-        if (_lastCdnMedia && isCdnUrl(_lastCdnMedia)) {
+        if (_lastCdnMedia && (isCdnUrl(_lastCdnMedia) || isMediaPlaylist(_lastCdnMedia))) {
             console.log('[Ψ-4NDR0666] M3 passive intercept fast-path hit.');
             recordUrl(_lastCdnMedia, 'dom');
             return _lastCdnMedia;
         }
+
+        // Playlist preference: the freshest playlist sniffed for THIS page
+        // epoch outranks every file-URL tier (hls.js only surfaces the m3u8
+        // through network traffic the Module 3 sniffer captures).
+        if (preferPlaylist) {
+            const live = latestPlaylistFromLedger(_ledgerEpoch);
+            if (live) {
+                console.log('[Ψ-4NDR0666] Ledger m3u8 fast-path hit.');
+                return live;
+            }
+        }
+
+        // [LM-B3] resolve every raw candidate against the page it came from
+        const absResolve = (raw, base) => {
+            try { return new URL(String(raw), base).href; } catch { return null; }
+        };
+        // v7.1.0: acceptance widened — m3u8 playlists qualify on ANY host;
+        // file URLs keep the isCdnUrl gate. blob: never qualifies.
+        // v7.2.0 [A3]: acceptance additionally sees THROUGH the wayback
+        // wrapper — archived pages serve every href as
+        // web.archive.org/web/<ts>/<original>, so the gate classifies the
+        // embedded original while returning the wrapper (the URL that
+        // actually serves bytes).
+        const accept = (raw, base) => {
+            const abs = absResolve(raw, base);
+            if (!abs || abs.startsWith('blob:')) return null;
+            if (isMediaPlaylist(abs) || isCdnUrl(abs)) return abs;
+            const unwrapped = unwrapWebArchiveUrl(abs);
+            if (unwrapped && (isMediaPlaylist(unwrapped) || isCdnUrl(unwrapped))) return abs;
+            return null;
+        };
+
+        // [LM-G8] query-string-tolerant CDN anchor chain
+        const CDN_ANCHOR_SEL = [
+            "a[href*='cdn'][href$='.mp4']",
+            "a[href*='cdn'][href$='.zip']",
+            "a[href*='cdn'][href$='.m3u8']",
+            "a[href*='cdn'][href*='.mp4?']",  // [LM-G8] token/query CDN links
+            "a[href*='cdn'][href*='.zip?']",  // [LM-G8]
+            "a[href*='cdn'][href*='.m3u8?']", // [LM-G8]
+            "a[download][href]",
+        ].join(', ');
+
+        // v7.1.0: inline-script .m3u8 sweep. Structural HTML parsing stays
+        // with DOMParser (D8); this is a bounded text scan over script
+        // bodies — the only place hls sources / JSON embeds survive parsing.
+        const sweepScriptTextForPlaylist = (doc, base) => {
+            for (const s of doc.querySelectorAll('script:not([src])')) {
+                const text = s.textContent || '';
+                const m = text.match(/https?:\/\/[^\s"'<>\\]+\.m3u8[^\s"'<>\\]*/i);
+                if (m) {
+                    const abs = absResolve(m[0], base);
+                    if (abs && isMediaPlaylist(abs)) return abs;
+                }
+            }
+            return null;
+        };
 
         let gatewayUrl    = null;
         const initialReferer = targetUrl;
@@ -1044,52 +1314,94 @@
         if (targetUrl.includes('get.bunk') || targetUrl.includes('/file/')) {
             gatewayUrl = targetUrl;
         } else {
+            let res = null;
             try {
-                const res = await new Promise((resolve) => {
+                res = await new Promise((resolve) => {
                     GM_xmlhttpRequest({
                         method:    'GET',
                         url:       targetUrl,
-                        headers:   { 'Referer': targetUrl, 'Accept': 'text/html' },
-                        timeout:   8000,
+                        headers:   {
+                            'Referer':         targetUrl,
+                            'Accept':          'text/html,application/xhtml+xml',
+                            'Accept-Language': 'en-US,en;q=0.9', // [LM] transport parity
+                        },
+                        timeout:   12000,
                         onload:    resolve,
                         onerror:   () => resolve({ status: 500 }),
                         ontimeout: () => resolve({ status: 408 }),
+                        onabort:   () => resolve({ status: 0 }), // [LM-G6] settle, never hang
                     });
                 });
-
-                if (res.status >= 200 && res.status < 300) {
-                    const doc = new DOMParser().parseFromString(res.responseText, 'text/html');
-
-                    const ogVideo = doc.querySelector("meta[property='og:video']");
-                    if (ogVideo?.content && isCdnUrl(ogVideo.content)) {
-                        recordUrl(ogVideo.content, 'dom');
-                        return ogVideo.content;
-                    }
-
-                    const videoSrc = doc.querySelector('source[src], video[src]');
-                    if (videoSrc) {
-                        const src = videoSrc.getAttribute('src') || videoSrc.src;
-                        if (src && !src.startsWith('blob:') && isCdnUrl(src)) {
-                            recordUrl(src, 'dom');
-                            return src;
-                        }
-                    }
-
-                    const cdnAnchor = doc.querySelector(
-                        'a[href*="cdn.cr"][href$=".mp4"], a[href*="cdn.cr"][href$=".zip"]'
-                    );
-                    if (cdnAnchor && isCdnUrl(cdnAnchor.href)) {
-                        recordUrl(cdnAnchor.href, 'dom');
-                        return cdnAnchor.href;
-                    }
-
-                    const gw = doc.querySelector(
-                        'a[href*="get.bunkr"], a.ic-download-01, a[href*="/file/"]'
-                    );
-                    if (gw) gatewayUrl = new URL(gw.getAttribute('href'), targetUrl).href;
-                }
             } catch (e) {
                 console.warn(`[Ψ-4NDR0666] Initial DOM fetch failed: ${e.message}`);
+            }
+
+            if (res && res.status >= 200 && res.status < 300) {
+                const doc = new DOMParser().parseFromString(res.responseText, 'text/html');
+
+                // Tier 1: OG video meta — [LM-B3] resolved against the source page
+                const ogVideo = doc.querySelector("meta[property='og:video']");
+                const ogAbs   = ogVideo ? accept(ogVideo.getAttribute('content'), targetUrl) : null;
+                if (ogAbs) {
+                    recordUrl(ogAbs, 'dom');
+                    return ogAbs;
+                }
+
+                // Tier 2: explicit HLS source declaration
+                const hlsSrc = doc.querySelector(
+                    "source[type='application/x-mpegURL'][src], source[type='vnd.apple.mpegURL'][src]"
+                );
+                const hlsAbs = hlsSrc ? accept(hlsSrc.getAttribute('src'), targetUrl) : null;
+                if (hlsAbs) {
+                    recordUrl(hlsAbs, 'dom');
+                    return hlsAbs;
+                }
+
+                // Tier 3: plain <video>/<source> src (blob: rejected by accept)
+                const videoSrc = doc.querySelector('source[src], video[src]');
+                const vidAbs   = videoSrc ? accept(videoSrc.getAttribute('src'), targetUrl) : null;
+                if (vidAbs) {
+                    recordUrl(vidAbs, 'dom');
+                    return vidAbs;
+                }
+
+                // Tier 4 (playlist-priority placement): embedded m3u8
+                if (preferPlaylist) {
+                    const embedded = sweepScriptTextForPlaylist(doc, targetUrl);
+                    if (embedded) {
+                        recordUrl(embedded, 'dom');
+                        return embedded;
+                    }
+                }
+
+                // Tier 5: [LM-G8] CDN anchor chain — first VALID candidate in
+                // document order (a non-CDN a[download] match can no longer
+                // shadow a later valid CDN anchor).
+                for (const anchor of doc.querySelectorAll(CDN_ANCHOR_SEL)) {
+                    const abs = accept(anchor.getAttribute('href'), targetUrl);
+                    if (abs) {
+                        recordUrl(abs, 'dom');
+                        return abs;
+                    }
+                }
+
+                // Tier 4 (file-priority placement): embedded m3u8 as the final
+                // in-page resort — better than returning null.
+                if (!preferPlaylist) {
+                    const embedded = sweepScriptTextForPlaylist(doc, targetUrl);
+                    if (embedded) {
+                        recordUrl(embedded, 'dom');
+                        return embedded;
+                    }
+                }
+
+                // Tier 6: gateway anchor → second hop
+                const gw = doc.querySelector(
+                    'a[href*="get.bunkr"], a.ic-download-01, a[href*="/file/"]'
+                );
+                if (gw) gatewayUrl = absResolve(gw.getAttribute('href'), targetUrl);
+            } else if (res) {
+                console.warn(`[Ψ-4NDR0666] Initial DOM fetch failed: HTTP ${res.status}`);
             }
         }
 
@@ -1101,30 +1413,479 @@
                 method:  'GET',
                 url:     gatewayUrl,
                 headers: {
-                    'Referer': initialReferer,
-                    'Accept':  'text/html,application/xhtml+xml',
+                    'Referer':         initialReferer,
+                    'Accept':          'text/html,application/xhtml+xml',
+                    'Accept-Language': 'en-US,en;q=0.9', // [LM] transport parity
                 },
-                timeout:   8000,
+                timeout:   12000,
                 onload:    (resp) => {
                     if (resp.status < 200 || resp.status >= 300) return resolve(null);
                     const doc = new DOMParser().parseFromString(resp.responseText, 'text/html');
-                    const dlAnchor = doc.querySelector(
-                        '#download-btn[href], a[href*="cdn"][href$=".mp4"], ' +
-                        'a[href*="cdn"][href$=".zip"], a.ic-download-01[href]'
-                    );
-                    if (dlAnchor) {
-                        const finalUrl = new URL(dlAnchor.getAttribute('href'), gatewayUrl).href;
-                        console.log(`[Ψ-4NDR0666] Direct CDN resolved: ${finalUrl}`);
-                        recordUrl(finalUrl, 'gateway');
-                        return resolve(finalUrl);
+                    // [LM-G8] query-tolerant gateway extraction — signed CDN
+                    // links (?token=…) can never match href$='.ext' alone.
+                    const GW_ANCHOR_SEL = [
+                        '#download-btn[href]',
+                        "a[href*='cdn'][href$='.mp4']",
+                        "a[href*='cdn'][href$='.zip']",
+                        "a[href*='cdn'][href$='.m3u8']",
+                        "a[href*='cdn'][href*='.mp4?']",  // [LM-G8]
+                        "a[href*='cdn'][href*='.zip?']",   // [LM-G8]
+                        "a[href*='cdn'][href*='.m3u8?']",  // [LM-G8]
+                        'a.ic-download-01[href]',
+                    ].join(', ');
+                    for (const dlAnchor of doc.querySelectorAll(GW_ANCHOR_SEL)) {
+                        const finalUrl = accept(dlAnchor.getAttribute('href'), gatewayUrl);
+                        if (finalUrl) {
+                            console.log(`[Ψ-4NDR0666] Direct CDN resolved: ${finalUrl}`);
+                            recordUrl(finalUrl, 'gateway');
+                            return resolve(finalUrl);
+                        }
                     }
                     resolve(null);
                 },
                 onerror:   () => resolve(null),
                 ontimeout: () => resolve(null),
+                onabort:   () => resolve(null), // [LM-G6]
             });
         });
     }
+
+    // =========================================================================
+    // MODULE 6.5: SIGNED ACQUISITION PIPELINE (module scope — every page)
+    // =========================================================================
+    // GAP 21 fix: the 3-hop authenticated pipeline (getNumericId →
+    // callMainAPI → getSignedToken) lived inside initBulkEngine, which
+    // returns early unless albumMatch — so resolveBulkFile stayed null on
+    // exactly the /v/ /f/ /d/ single-asset pages where the DL/Stream glyphs
+    // live, and Tier B of both glyph resolvers was structurally dead code
+    // there. The pipeline is hoisted to module scope here: shared abort
+    // registry, panel-independent logging, armed at eval time. The bulk
+    // engine (Module 11) consumes it unchanged.
+    const _API_TIMEOUT_MS = 20000;
+    const _activeRequests = new Set(); // live GM_* handles — bulk STOP aborts them (GAP 9)
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    // Panel-independent pipeline logging: renders into the bulk panel log
+    // when it is mounted (album pages — byte-identical sink to the baseline
+    // logBulk), else mirrors to the console so single-asset resolutions
+    // remain observable on /v//f//d/ pages.
+    function logBulk(msg, level = 'inf') {
+        const logEl = document.getElementById('psi-bulk-log');
+        if (logEl && logEl.isConnected) {
+            const span       = document.createElement('span');
+            span.className   = `psi-log-${level}`;
+            span.textContent = `[Ψ] ${msg}`;
+            logEl.appendChild(span);
+            logEl.scrollTop = logEl.scrollHeight;
+            if (level === 'dbg') return;
+        }
+        console.log(`[Ψ-BULK] ${msg}`);
+    }
+
+    // ── GM_xmlhttpRequest wrapper ─────────────────────────────────────────
+    function gmFetch(opts) {
+        return new Promise((resolve, reject) => {
+            // GAP 9 fix: capture the control handle so an in-flight
+            // request can be abort()-ed from the STOP button, and
+            // deregister on every terminal path (finally-equivalent —
+            // GM_xmlhttpRequest has no promise/finally of its own).
+            const control = GM_xmlhttpRequest({
+                timeout:   _API_TIMEOUT_MS,
+                ...opts,
+                onload:    r  => { _activeRequests.delete(control); resolve(r); },
+                onerror:   () => { _activeRequests.delete(control); reject(new Error('Network error: ' + opts.url)); },
+                ontimeout: () => { _activeRequests.delete(control); reject(new Error('Timeout: '       + opts.url)); },
+                onabort:   () => { _activeRequests.delete(control); reject(new Error('Aborted: '       + opts.url)); },
+            });
+            _activeRequests.add(control);
+        });
+    }
+
+    // ── findFileObj (deep __NEXT_DATA__ traversal) ────────────────────────
+    function findFileObj(obj, depth = 0) {
+        if (depth > 12 || !obj || typeof obj !== 'object') return null;
+        if (Array.isArray(obj)) {
+            for (const v of obj) { const r = findFileObj(v, depth + 1); if (r) return r; }
+            return null;
+        }
+        const hasNumId = obj.id && /^\d{5,12}$/.test(String(obj.id));
+        const hasName  = obj.name || obj.filename || obj.original;
+        if (hasNumId && hasName) {
+            return { id: String(obj.id), name: obj.name || obj.filename || obj.original };
+        }
+        for (const v of Object.values(obj)) {
+            const r = findFileObj(v, depth + 1);
+            if (r) return r;
+        }
+        return null;
+    }
+
+    // ── getNumericId ──────────────────────────────────────────────────────
+    async function getNumericId(item) {
+        const res  = await gmFetch({
+            method:  'GET',
+            url:     item.filePageURL,
+            headers: { 'User-Agent': navigator.userAgent, 'Referer': window.location.href },
+        });
+        const html = res.responseText;
+
+        // 1. __NEXT_DATA__ JSON — most reliable
+        const ndm = html.match(
+            /<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i
+        );
+        if (ndm) {
+            try {
+                const nd   = JSON.parse(ndm[1]);
+                const pp   = nd?.props?.pageProps || {};
+                const keys = ['file', 'media', 'item', 'data', 'video', 'image'];
+                for (const k of keys) {
+                    if (pp[k]?.id) {
+                        const numId = String(pp[k].id);
+                        const fname = pp[k].name || pp[k].filename || pp[k].original || item.name;
+                        logBulk(`  [ND] ${k}.id=${numId}`, 'dbg');
+                        return { numId, fname };
+                    }
+                }
+                if (pp.id) return { numId: String(pp.id), fname: pp.name || item.name };
+
+                const found = findFileObj(nd);
+                if (found) {
+                    logBulk(`  [ND-deep] id=${found.id}`, 'dbg');
+                    return { numId: found.id, fname: found.name || item.name };
+                }
+            } catch (e) {
+                logBulk(`  ND err: ${e.message}`, 'dbg');
+            }
+        }
+
+        // 2. dl.bunkr.cr/file/<id> href in raw HTML
+        const dlm = html.match(/dl\.bunkr\.cr\/file\/(\d+)/i);
+        if (dlm) return { numId: dlm[1], fname: item.name };
+
+        // 3. Generic numeric id regex fallback
+        const idMatches = [...html.matchAll(/"id"\s*:\s*(\d{5,12})/g)];
+        if (idMatches.length) {
+            const numId = idMatches[idMatches.length - 1][1];
+            logBulk(`  [regex] id=${numId}`, 'dbg');
+            return { numId, fname: item.name };
+        }
+
+        throw new Error('Numeric ID resolution failure.');
+    }
+
+    // ── callMainAPI ───────────────────────────────────────────────────────
+    async function callMainAPI(numId) {
+        logBulk(`  POST _001_v2 {id:"${numId}"}`, 'dbg');
+        const res = await gmFetch({
+            method: 'POST',
+            url:    'https://dl.bunkr.cr/api/_001_v2',
+            headers: {
+                'Content-Type': 'application/json',
+                'Origin':       'https://dl.bunkr.cr',
+                'Referer':      'https://dl.bunkr.cr/',
+                'User-Agent':   navigator.userAgent,
+            },
+            data: JSON.stringify({ id: numId }),
+        });
+        logBulk(`  API ${res.status}: ${res.responseText.slice(0, 120)}`, 'dbg');
+
+        if (res.status < 200 || res.status >= 300)
+            throw new Error(`API ${res.status}: ${res.responseText.slice(0, 80)}`);
+
+        let json;
+        try { json = JSON.parse(res.responseText); }
+        catch (_) { throw new Error('JSON parse error: ' + res.responseText.slice(0, 80)); }
+
+        if (!json?.mediafiles || !json?.path)
+            throw new Error('API routing payload empty: ' + res.responseText.slice(0, 80));
+
+        return {
+            cdnBase:  json.mediafiles.replace(/\/$/, ''),
+            filePath: json.path,
+            original: json.original || '',
+        };
+    }
+
+    // ── getSignedToken ────────────────────────────────────────────────────
+    async function getSignedToken(filePath) {
+        const signURL = `https://glb-apisign.cdn.cr/sign?path=${encodeURIComponent(filePath)}`;
+        logBulk(`  SIGN ${signURL}`, 'dbg');
+        const res = await gmFetch({
+            method:  'GET',
+            url:     signURL,
+            headers: {
+                'Origin':     'https://dl.bunkr.cr',
+                'Referer':    'https://dl.bunkr.cr/',
+                'User-Agent': navigator.userAgent,
+            },
+        });
+        logBulk(`  SIGN ${res.status}: ${res.responseText.slice(0, 120)}`, 'dbg');
+
+        if (res.status < 200 || res.status >= 300)
+            throw new Error(`Sign API ${res.status}: ${res.responseText.slice(0, 80)}`);
+
+        let json;
+        try { json = JSON.parse(res.responseText); }
+        catch (_) { throw new Error('Sign JSON parse error: ' + res.responseText.slice(0, 80)); }
+
+        if (!json?.token || !json?.ex)
+            throw new Error('Sign response payload empty: ' + res.responseText.slice(0, 80));
+
+        return { token: json.token, ex: json.ex };
+    }
+
+    // ── resolveBulkFile (module-scope export) ─────────────────────────────
+    // GAP 13 fix (retained): removed the albumGalleryCache "fast-path" (GAP
+    // 2, prior revision). `/api/album/gallery`'s `image_url` is a
+    // preview/thumbnail asset — it is never the signed, authenticated
+    // original-file CDN URL that dl.bunkr.cr's sign pipeline produces.
+    // Every bulk (and per-item grid glyph) download that hit this cache was
+    // handed a thumbnail URL to download as if it were the file; the CDN
+    // correctly rejected the request, surfacing as a uniform
+    // SERVER_BAD_CONTENT across every item. There is no valid fast-path
+    // around the signed-URL requirement — every file must go through
+    // getNumericId → callMainAPI → getSignedToken.
+    // GAP 6 fix (retained): 3-retry exponential backoff on API failures.
+    //
+    // Resolution order:
+    //   1. getNumericId (fetch /f/<slug> page, parse __NEXT_DATA__)
+    //   2. callMainAPI  (POST dl.bunkr.cr/api/_001_v2 → CDN base + file path)
+    //   3. getSignedToken (GET glb-apisign.cdn.cr/sign → token + ex)
+    //   4. Assemble signed CDN URL
+    resolveBulkFile = async function _resolveBulkFile(item, attempt = 0) {
+        const MAX_RETRIES = 3;
+
+        try {
+            const { numId, fname }                = await getNumericId(item);
+
+            const { cdnBase, filePath, original } = await callMainAPI(numId);
+            const { token, ex }                   = await getSignedToken(filePath);
+            const n      = original || fname || item.name;
+            const cdnURL = `${cdnBase}${filePath}?n=${encodeURIComponent(n)}&token=${token}&ex=${ex}`;
+            logBulk(`  CDN: ${cdnURL.slice(0, 80)}…`, 'dbg');
+            recordUrl(cdnURL, 'api'); // v7: signed resolutions feed the ledger
+            return { cdnURL, fname: n };
+
+        } catch (e) {
+            // Exponential backoff retry for transient failures (429, network errors)
+            if (attempt < MAX_RETRIES) {
+                const backoff = Math.pow(2, attempt) * 1000;
+                logBulk(
+                    `  Retry ${attempt + 1}/${MAX_RETRIES} for ${item.name} in ${backoff}ms: ${e.message}`,
+                    'dbg'
+                );
+                await sleep(backoff);
+                return _resolveBulkFile(item, attempt + 1);
+            }
+            throw e;
+        }
+    };
+
+    // =========================================================================
+    // MODULE 6.9: Ψ-ARCHIVE — WEB-ARCHIVE RESOLVER (broken-CDN resurrection)
+    // =========================================================================
+    // Vision item "broken url cdn resolution to archive.org, archive.is,
+    // etc.": the file is dead on the live web, but the public web archives
+    // still hold the page, the gateway hop, and sometimes the bytes
+    // themselves. Probe order per URL:
+    //   [A1] archive.org Wayback availability API (fast cached lookup),
+    //        then the authoritative CDX index (statuscode:200 captures).
+    //   [A2] archive.today family (archive.ph / archive.is / archive.today)
+    //        via the /newest/<url> redirect probe — mirrors rotate on
+    //        transport failure (403/429/network) ONLY; a "no snapshot"
+    //        verdict from any mirror is final for the whole family.
+    // All probes: GM-privileged (CORS-free), 12s hard bound ([LM] parity),
+    // settled on abort [LM-G6], registered in the shared abort registry
+    // (GAP 9), promise-memoised per URL for this page epoch.
+    const ARCHIVE_PROBE_TIMEOUT  = 12000;
+    const ARCHIVE_TODAY_HOSTS    = ['archive.ph', 'archive.is', 'archive.today'];
+    const ARCHIVE_RATE_DELAY_MS  = 350;   // ledger-audit pacing — polite client
+    const ARCHIVE_AUDIT_CAP      = 40;    // audit bound: ledger can hold 500
+    let   _archiveImgBudget      = 12;    // [A4] dead-thumb probes per page
+    const _archiveCache          = new Map(); // url → Promise<snapshot|null>
+
+    function archiveFetchText(url) {
+        return new Promise((resolve) => {
+            const control = GM_xmlhttpRequest({
+                method:  'GET',
+                url,
+                headers: {
+                    'Accept':          'application/json,text/html,*/*',
+                    'Accept-Language': 'en-US,en;q=0.9', // [LM] transport parity
+                },
+                timeout:   ARCHIVE_PROBE_TIMEOUT,
+                onload:    (r)  => { _activeRequests.delete(control); resolve(r);    },
+                onerror:   ()   => { _activeRequests.delete(control); resolve(null); },
+                ontimeout: ()   => { _activeRequests.delete(control); resolve(null); },
+                onabort:   ()   => { _activeRequests.delete(control); resolve(null); },
+            });
+            _activeRequests.add(control);
+        });
+    }
+
+    // [A1a] Wayback availability API — the fast cached shortcut.
+    // Shape: { archived_snapshots: { closest: { url, timestamp, status } } }
+    async function waybackAvailable(url) {
+        const r = await archiveFetchText(
+            `https://archive.org/wayback/available?url=${encodeURIComponent(url)}`
+        );
+        if (!r || r.status < 200 || r.status >= 300) return null;
+        try {
+            const data = JSON.parse(r.responseText);
+            const snap = data && data.archived_snapshots && data.archived_snapshots.closest;
+            if (snap && snap.url && /^https?:\/\//i.test(snap.url)) {
+                return { via: 'archive.org', url: snap.url, ts: snap.timestamp || '' };
+            }
+        } catch (e) { /* malformed body → not archived, degrade to null */ }
+        return null;
+    }
+
+    // [A1b] CDX index — the authoritative capture list. Wayback archives
+    // plenty of 30x gateway hops; the statuscode:200 filter is what makes
+    // a CDX hit actually serve media bytes. JSON rows: [header, data…];
+    // empty array / empty body / non-JSON all mean "no usable capture".
+    async function waybackCdx(url) {
+        const r = await archiveFetchText(
+            'https://web.archive.org/cdx/search/cdx' +
+            `?url=${encodeURIComponent(url)}` +
+            '&output=json&limit=1&filter=statuscode:200' +
+            '&fl=timestamp,original,statuscode'
+        );
+        if (!r || r.status < 200 || r.status >= 300) return null;
+        try {
+            const rows = JSON.parse(r.responseText);
+            if (Array.isArray(rows) && rows.length > 1 && Array.isArray(rows[1])) {
+                const [ts, original] = rows[1];
+                if (ts && original) {
+                    return {
+                        via: 'archive.org',
+                        url: `https://web.archive.org/web/${ts}/${original}`,
+                        ts:  String(ts),
+                    };
+                }
+            }
+        } catch (e) { /* empty body ("[]"/"") → not archived */ }
+        return null;
+    }
+
+    // [A2] archive.today /newest/ — follows to the snapshot when one exists
+    // and to the submit/wip surface when none does. Detection is final-URL
+    // shape only; rate-limit verdicts (403/429) and transport failures
+    // rotate mirrors. The snapshot-id path segment distinguishes a real
+    // capture from the 'newest'/'submit' service routes.
+    async function archiveTodayNewest(url) {
+        for (const host of ARCHIVE_TODAY_HOSTS) {
+            const r = await archiveFetchText(`https://${host}/newest/${url}`);
+            if (!r) continue;                                  // transport failure → next mirror
+            if (r.status === 403 || r.status === 429) continue; // rate-limited → next mirror
+            if (r.status < 200 || r.status >= 300) return null; // definitive verdict → family-final
+            const finalUrl = r.finalUrl || '';
+            if (
+                /\/(submit|wip)(\/|$|\?)/i.test(finalUrl) ||
+                finalUrl === `https://${host}/newest/${url}`
+            ) {
+                return null; // "not archived" verdict is family-final
+            }
+            const snapMatch = finalUrl.match(/^https?:\/\/([^\/]+)\/([^\/]+)\/(.+)$/i);
+            if (
+                snapMatch &&
+                /^archive\.(ph|is|today)$/i.test(snapMatch[1]) &&
+                snapMatch[2] !== 'newest'
+            ) {
+                return { via: 'archive.today', url: finalUrl, ts: snapMatch[2] };
+            }
+            // any other landing shape on this host → not a snapshot; keep
+            // trying mirrors only if this one was inconclusive.
+        }
+        return null;
+    }
+
+    // Orchestrator — promise-memoised per URL (concurrent glyph/bulk/audit
+    // calls for the same URL probe exactly once). Rejections are flattened
+    // to null: the archive tier is a courtesy, never a fault source.
+    function resolveWebArchive(url) {
+        if (!url || typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+            return Promise.resolve(null);
+        }
+        if (_archiveCache.has(url)) return _archiveCache.get(url);
+        const probe = (async () => {
+            const avail = await waybackAvailable(url);
+            if (avail) return avail;
+            const cdx = await waybackCdx(url);
+            if (cdx) return cdx;
+            return archiveTodayNewest(url);
+        })().catch(() => null);
+        _archiveCache.set(url, probe);
+        return probe;
+    }
+
+    // The glyph/bulk archive tier ([A3]): probe candidates in order. A
+    // snapshot of a media URL IS the media; a snapshot of a page/gateway is
+    // fed through resolveDomStreamUrl so the full DOM extraction chain runs
+    // against the archived copy. Every hit feeds the ledger as an
+    // 'archive'-sourced URL.
+    async function resolveViaWebArchive(candidates, { preferPlaylist = false } = {}) {
+        for (const cand of candidates) {
+            if (!cand || typeof cand !== 'string') continue;
+            const snap = await resolveWebArchive(cand);
+            if (!snap) continue;
+            const probedOriginal = unwrapWebArchiveUrl(cand) || cand;
+            if (isCdnUrl(probedOriginal) || isMediaPlaylist(probedOriginal)) {
+                recordUrl(snap.url, 'archive');
+                return snap.url;
+            }
+            const extracted = await resolveDomStreamUrl(snap.url, { preferPlaylist });
+            if (extracted) {
+                recordUrl(extracted, 'archive');
+                return extracted;
+            }
+        }
+        return null;
+    }
+
+    // [A6] Ledger audit — probe every captured URL against the archives,
+    // rate-limited, and copy the resolvable snapshot list. The dead live
+    // web is exactly what this vision item is FOR: the operator keeps a
+    // ledger of links that once worked; the audit tells them which ones
+    // still have an afterlife. Bound: ARCHIVE_AUDIT_CAP entries (the
+    // ledger is FIFO-ordered, so the cap takes the freshest first).
+    let _archiveAuditBusy = false;
+    async function auditLedgerAgainstArchive() {
+        if (_archiveAuditBusy) {
+            showToast('🗄 Archive audit already running — one moment.', 4000);
+            return;
+        }
+        const total = _urlLedger.size;
+        if (!total) {
+            showToast('Ledger empty — no CDN/m3u8 URLs captured yet.');
+            return;
+        }
+        const urls = Array.from(_urlLedger.keys()).slice(0, ARCHIVE_AUDIT_CAP);
+        _archiveAuditBusy = true;
+        showToast(`🗄 Auditing ${urls.length}/${total} ledger URL(s) against archive.org / archive.is…`, 4000, true);
+        const archived = [];
+        const missing  = [];
+        try {
+            for (const url of urls) {
+                const snap = await resolveWebArchive(url);
+                if (snap) archived.push(snap.url); else missing.push(url);
+                await sleep(ARCHIVE_RATE_DELAY_MS);
+            }
+        } finally {
+            _archiveAuditBusy = false;
+        }
+        if (archived.length) {
+            robustCopy(archived.join('\n'), null);
+            showToast(`🗄 ${archived.length}/${urls.length} URLs have snapshots — archived list copied.`, 5000, true);
+        } else {
+            showToast(`🗄 0/${urls.length} ledger URLs exist in the web archives.`, 5000);
+        }
+        if (missing.length) {
+            console.warn(`[Ψ-4NDR0666] Archive audit — no snapshot for:\n${missing.join('\n')}`);
+        }
+    }
+    GM_registerMenuCommand('🗄 Audit Ledger vs Web Archive', auditLedgerAgainstArchive);
 
     // =========================================================================
     // MODULE 7: UNIFIED DIRECT ACQUISITION
@@ -1182,7 +1943,8 @@
                     }
 
                     // Tier B: 3-hop authenticated API pipeline (dl.bunkr.cr)
-                    // Requires initBulkEngine to have run and populated resolveBulkFile
+                    // v7.1.0 (GAP 21): armed at eval time by Module 6.5 — no
+                    // longer dependent on initBulkEngine's album-only guard.
                     if (resolveBulkFile && pageSlug) {
                         try {
                             const item = {
@@ -1211,6 +1973,22 @@
                     dlGlyph.innerHTML = downloadSvg;
                     if (cdnUrl) {
                         nativeDownload(cdnUrl);
+                    } else if (ARCHIVE_ENABLED()) {
+                        // v7.2.0 Tier D: Ψ-ARCHIVE — the asset is dead on the
+                        // live web; dig it out of the public archives
+                        // ([A1]/[A2]) before conceding. Candidates in
+                        // liveness order: the gateway hop, then this page.
+                        const resurrected = await resolveViaWebArchive(
+                            [targetUrl, window.location.href],
+                            { preferPlaylist: false }
+                        );
+                        if (resurrected) {
+                            showToast('🗄 ARCHIVED copy resolved (web archive) — downloading.', 5000, true);
+                            nativeDownload(resurrected);
+                        } else {
+                            showToast('Download failed. No resolvable CDN URL found (live or archived).', 3000);
+                            if (targetUrl !== window.location.href) window.open(targetUrl, '_blank');
+                        }
                     } else {
                         showToast('Download failed. No resolvable CDN URL found.', 3000);
                         if (targetUrl !== window.location.href) window.open(targetUrl, '_blank');
@@ -1236,9 +2014,19 @@
 
                     // Tier A: video.currentSrc
                     const vidEl = document.querySelector('video');
-                    let streamUrl = (vidEl?.currentSrc && !vidEl.currentSrc.startsWith('blob:') && isCdnUrl(vidEl.currentSrc))
+                    let streamUrl = (vidEl?.currentSrc && !vidEl.currentSrc.startsWith('blob:') &&
+                                     (isCdnUrl(vidEl.currentSrc) || isMediaPlaylist(vidEl.currentSrc)))
                         ? vidEl.currentSrc
                         : null;
+
+                    // v7.1.0 Tier A2: HLS video pages expose the m3u8 only
+                    // through hls.js network traffic — the Module 3 sniffer
+                    // records it as it loads. The freshest playlist for THIS
+                    // page epoch outranks the file-URL tiers: the stream glyph
+                    // is the vision's "copying of the m3u8 url" surface.
+                    if (!streamUrl && vidEl) {
+                        streamUrl = latestPlaylistFromLedger(_ledgerEpoch);
+                    }
 
                     // Tier B: 3-hop API pipeline
                     if (!streamUrl && resolveBulkFile && pageSlug) {
@@ -1255,21 +2043,41 @@
                         }
                     }
 
-                    // Tier C: DOM gateway
+                    // Tier C: DOM gateway — playlist-preferring resolver
                     if (!streamUrl) {
                         const gatewayAnchor = document.querySelector(NATIVE_DL_SEL);
                         const targetUrl     = (gatewayAnchor?.href && gatewayAnchor.href !== window.location.href)
                             ? gatewayAnchor.href
                             : window.location.href;
-                        streamUrl = await resolveDomStreamUrl(targetUrl);
+                        streamUrl = await resolveDomStreamUrl(targetUrl, { preferPlaylist: true });
+
+                        // v7.2.0 Tier D: Ψ-ARCHIVE — the page is dead live;
+                        // pull the m3u8/CDN URL out of the archived copy.
+                        if (!streamUrl && ARCHIVE_ENABLED()) {
+                            streamUrl = await resolveViaWebArchive(
+                                [targetUrl, window.location.href],
+                                { preferPlaylist: true }
+                            );
+                        }
                     }
 
                     streamGlyph.innerHTML = savedHtml;
                     if (streamUrl) {
                         recordUrl(streamUrl, 'stream'); // v7: ledger aggregation
                         robustCopy(streamUrl, streamGlyph);
-                        if (streamUrl.includes('token=') && streamUrl.includes('ex=')) {
+                        // v7.2.0: archived sources get explicit labeling —
+                        // the operator must know the link is a snapshot of
+                        // a dead asset, not the live CDN.
+                        const archivedCopy = !!unwrapWebArchiveUrl(streamUrl) ||
+                            /^https?:\/\/archive\.(ph|is|today)\//i.test(streamUrl);
+                        if (isMediaPlaylist(streamUrl)) {
+                            showToast(archivedCopy
+                                ? '🗄 ARCHIVED HLS playlist (m3u8) copied — live source is dead.'
+                                : '⦒ █▓░ HLS playlist (m3u8) copied for streaming.', 5000, true);
+                        } else if (streamUrl.includes('token=') && streamUrl.includes('ex=')) {
                             showToast('⦒ █▓░URL copied for IP streaming.', 6000, true);
+                        } else if (archivedCopy) {
+                            showToast('🗄 ARCHIVED media URL copied — live source is dead.', 5000, true);
                         }
                     } else {
                         streamGlyph.style.color       = 'var(--red)';
@@ -1449,7 +2257,7 @@
                              })),
             gridItemsCount:  document.querySelectorAll('.grid > div, .grid-images_box, .theItem').length,
             lastCdnMedia:    _lastCdnMedia || 'none',
-            bulkEngineReady: !!resolveBulkFile,
+            signedPipelineArmed: !!resolveBulkFile, // v7.1.0 (GAP 21): armed on every page now
             urlLedger: {
                 m3u8:  ledgerM3u8,
                 files: ledgerFiles,
@@ -1460,8 +2268,9 @@
                 canonicalDomain:  TARGET_DOMAIN,
                 bulkConcurrency:  clampSetting(_settings.bulkConcurrency, 1, 6, 2),
                 bulkDelayMs:      clampSetting(_settings.bulkDelayMs, 200, 10000, 1200),
+                archiveFallback:  ARCHIVE_ENABLED(), // v7.2.0
             },
-            hotkeys: 'V=cycle visited, B=pin bulk panel, U=copy URL ledger',
+            hotkeys: 'V=cycle visited, B=pin bulk panel, U=copy URL ledger, A=archive audit',
             envGlobals: {
                 jsSlug:        typeof window.jsSlug        !== 'undefined' ? window.jsSlug        : 'undefined',
                 jsCDN:         typeof window.jsCDN         !== 'undefined' ? window.jsCDN         : 'undefined',
@@ -1526,7 +2335,35 @@
             const legacy = host.match(/^(.+)\.(bunkr|bunker|bunkrr)\.[a-z0-9-]+$/);
             if (!legacy) return;
 
+            // v7.2.0 [A4]: remember the pristine URL — by the time the
+            // second error fires, el.src is already the rewritten (still
+            // dead) canonical-domain retry.
+            el.dataset.psiOrigSrc = src;
+
             if (el.dataset.psiImgRetry) {
+                // v7.2.0 [A4]: last-chance resurrection — probe the Wayback
+                // availability API for the ORIGINAL src, budgeted so a grid
+                // of hundreds of dead thumbs cannot hammer archive.org. A
+                // hit swaps the src exactly once; a miss (or a spent budget)
+                // is terminal, preserving the baseline's no-loop guarantee.
+                if (
+                    ARCHIVE_ENABLED() &&
+                    _archiveImgBudget > 0 &&
+                    !el.dataset.psiImgArch
+                ) {
+                    _archiveImgBudget--;
+                    el.dataset.psiImgArch = '1';
+                    const origSrc = el.dataset.psiOrigSrc || src;
+                    waybackAvailable(origSrc).then((snap) => {
+                        if (snap && el.isConnected) {
+                            console.log(`[Ψ-4NDR0666] Dead image resurrected via wayback: ${snap.url.slice(0, 80)}`);
+                            el.src = snap.url;
+                        } else if (el.isConnected) {
+                            el.classList.add('psi-img-dead');
+                        }
+                    });
+                    return;
+                }
                 el.classList.add('psi-img-dead');
                 console.warn(`[Ψ-4NDR0666] Broken-link fixer: unrecoverable image — ${src.slice(0, 80)}`);
                 return;
@@ -1545,7 +2382,8 @@
     // Vision item "power user control": V cycles visited visibility (reuses
     // the toggle button's own handler so behaviour can never diverge), B
     // pins/unpins the bulk panel (touch/click parity with the hover peek),
-    // U exports the aggregated URL ledger. Modifier combos and text-entry
+    // U exports the aggregated URL ledger, and A (v7.2.0) runs the ledger
+    // audit against the web archives. Modifier combos and text-entry
     // contexts are excluded so page search/typing never collides.
     function initHotkeys() {
         document.addEventListener('keydown', (e) => {
@@ -1568,11 +2406,15 @@
                     copyUrlLedger();
                     break;
                 }
+                case 'a': { // v7.2.0 [A6]: ledger audit vs the web archives
+                    auditLedgerAgainstArchive();
+                    break;
+                }
             }
         });
 
         GM_registerMenuCommand('⌨ Hotkey Reference', () => {
-            showToast('⌨ V: cycle visited · B: pin bulk panel · U: copy URL ledger', 8000, true);
+            showToast('⌨ V: cycle visited · B: pin bulk panel · U: copy URL ledger · A: archive audit', 8000, true);
         });
     }
 
@@ -1652,25 +2494,19 @@
             // settings (Module 0.3); defaults match the baseline exactly.
             DELAY_MS:       clampSetting(_settings.bulkDelayMs, 200, 10000, 1200),
             MAX_CONCURRENT: clampSetting(_settings.bulkConcurrency, 1, 6, 2),
-            API_TIMEOUT:    20000,
             DOWNLOAD_TIMEOUT: 60000, // GAP 8 fix: GM_download had no hard bound at all
-            activeRequests: new Set(), // GAP 9 fix: live GM_* control handles, so STOP can abort() them
+            // GAP 21: shared module-scope registry (Module 6.5) - the
+            // 3-hop pipeline and this engine abort through the same set.
+            activeRequests: _activeRequests,
         };
 
-        const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-        // ── Logging helpers ───────────────────────────────────────────────────
-        function logBulk(msg, level = 'inf') {
-            const logEl = document.getElementById('psi-bulk-log');
-            if (!logEl) return;
-            const span     = document.createElement('span');
-            span.className = `psi-log-${level}`;
-            span.textContent = `[Ψ] ${msg}`;
-            logEl.appendChild(span);
-            logEl.scrollTop = logEl.scrollHeight;
-            if (level !== 'dbg') console.log(`[Ψ-BULK] ${msg}`);
-        }
-
+        // GAP 21 note: sleep, logBulk, gmFetch, findFileObj, getNumericId,
+        // callMainAPI, getSignedToken and the resolveBulkFile assignment that
+        // previously lived inside this engine are hoisted to module scope
+        // (Module 6.5) so the signed pipeline is armed on every page, not
+        // only album grids. Album behavior is unchanged - logBulk still
+        // sinks into the mounted panel log; the queue below drives the
+        // same pipeline.
         function setBulkStatus(msg) {
             const st = document.getElementById('psi-bulk-status');
             if (st) st.textContent = msg;
@@ -1710,206 +2546,6 @@
             }
             return files;
         }
-
-        // ── GM_xmlhttpRequest wrapper ─────────────────────────────────────────
-        function gmFetch(opts) {
-            return new Promise((resolve, reject) => {
-                // GAP 9 fix: capture the control handle so an in-flight
-                // request can be abort()-ed from the STOP button, and
-                // deregister on every terminal path (finally-equivalent —
-                // GM_xmlhttpRequest has no promise/finally of its own).
-                const control = GM_xmlhttpRequest({
-                    timeout:   BulkState.API_TIMEOUT,
-                    ...opts,
-                    onload:    r  => { BulkState.activeRequests.delete(control); resolve(r); },
-                    onerror:   () => { BulkState.activeRequests.delete(control); reject(new Error('Network error: ' + opts.url)); },
-                    ontimeout: () => { BulkState.activeRequests.delete(control); reject(new Error('Timeout: '       + opts.url)); },
-                    onabort:   () => { BulkState.activeRequests.delete(control); reject(new Error('Aborted: '       + opts.url)); },
-                });
-                BulkState.activeRequests.add(control);
-            });
-        }
-
-        // ── findFileObj (deep __NEXT_DATA__ traversal) ────────────────────────
-        function findFileObj(obj, depth = 0) {
-            if (depth > 12 || !obj || typeof obj !== 'object') return null;
-            if (Array.isArray(obj)) {
-                for (const v of obj) { const r = findFileObj(v, depth + 1); if (r) return r; }
-                return null;
-            }
-            const hasNumId = obj.id && /^\d{5,12}$/.test(String(obj.id));
-            const hasName  = obj.name || obj.filename || obj.original;
-            if (hasNumId && hasName) {
-                return { id: String(obj.id), name: obj.name || obj.filename || obj.original };
-            }
-            for (const v of Object.values(obj)) {
-                const r = findFileObj(v, depth + 1);
-                if (r) return r;
-            }
-            return null;
-        }
-
-        // ── getNumericId ──────────────────────────────────────────────────────
-        async function getNumericId(item) {
-            const res  = await gmFetch({
-                method:  'GET',
-                url:     item.filePageURL,
-                headers: { 'User-Agent': navigator.userAgent, 'Referer': window.location.href },
-            });
-            const html = res.responseText;
-
-            // 1. __NEXT_DATA__ JSON — most reliable
-            const ndm = html.match(
-                /<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i
-            );
-            if (ndm) {
-                try {
-                    const nd   = JSON.parse(ndm[1]);
-                    const pp   = nd?.props?.pageProps || {};
-                    const keys = ['file', 'media', 'item', 'data', 'video', 'image'];
-                    for (const k of keys) {
-                        if (pp[k]?.id) {
-                            const numId = String(pp[k].id);
-                            const fname = pp[k].name || pp[k].filename || pp[k].original || item.name;
-                            logBulk(`  [ND] ${k}.id=${numId}`, 'dbg');
-                            return { numId, fname };
-                        }
-                    }
-                    if (pp.id) return { numId: String(pp.id), fname: pp.name || item.name };
-
-                    const found = findFileObj(nd);
-                    if (found) {
-                        logBulk(`  [ND-deep] id=${found.id}`, 'dbg');
-                        return { numId: String(found.id), fname: found.name || item.name };
-                    }
-                } catch (e) {
-                    logBulk(`  ND err: ${e.message}`, 'dbg');
-                }
-            }
-
-            // 2. dl.bunkr.cr/file/<id> href in raw HTML
-            const dlm = html.match(/dl\.bunkr\.cr\/file\/(\d+)/i);
-            if (dlm) return { numId: dlm[1], fname: item.name };
-
-            // 3. Generic numeric id regex fallback
-            const idMatches = [...html.matchAll(/"id"\s*:\s*(\d{5,12})/g)];
-            if (idMatches.length) {
-                const numId = idMatches[idMatches.length - 1][1];
-                logBulk(`  [regex] id=${numId}`, 'dbg');
-                return { numId, fname: item.name };
-            }
-
-            throw new Error('Numeric ID resolution failure.');
-        }
-
-        // ── callMainAPI ───────────────────────────────────────────────────────
-        async function callMainAPI(numId) {
-            logBulk(`  POST _001_v2 {id:"${numId}"}`, 'dbg');
-            const res = await gmFetch({
-                method: 'POST',
-                url:    'https://dl.bunkr.cr/api/_001_v2',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Origin':       'https://dl.bunkr.cr',
-                    'Referer':      'https://dl.bunkr.cr/',
-                    'User-Agent':   navigator.userAgent,
-                },
-                data: JSON.stringify({ id: numId }),
-            });
-            logBulk(`  API ${res.status}: ${res.responseText.slice(0, 120)}`, 'dbg');
-
-            if (res.status < 200 || res.status >= 300)
-                throw new Error(`API ${res.status}: ${res.responseText.slice(0, 80)}`);
-
-            let json;
-            try { json = JSON.parse(res.responseText); }
-            catch (_) { throw new Error('JSON parse error: ' + res.responseText.slice(0, 80)); }
-
-            if (!json?.mediafiles || !json?.path)
-                throw new Error('API routing payload empty: ' + res.responseText.slice(0, 80));
-
-            return {
-                cdnBase:  json.mediafiles.replace(/\/$/, ''),
-                filePath: json.path,
-                original: json.original || '',
-            };
-        }
-
-        // ── getSignedToken ────────────────────────────────────────────────────
-        async function getSignedToken(filePath) {
-            const signURL = `https://glb-apisign.cdn.cr/sign?path=${encodeURIComponent(filePath)}`;
-            logBulk(`  SIGN ${signURL}`, 'dbg');
-            const res = await gmFetch({
-                method:  'GET',
-                url:     signURL,
-                headers: {
-                    'Origin':     'https://dl.bunkr.cr',
-                    'Referer':    'https://dl.bunkr.cr/',
-                    'User-Agent': navigator.userAgent,
-                },
-            });
-            logBulk(`  SIGN ${res.status}: ${res.responseText.slice(0, 120)}`, 'dbg');
-
-            if (res.status < 200 || res.status >= 300)
-                throw new Error(`Sign API ${res.status}: ${res.responseText.slice(0, 80)}`);
-
-            let json;
-            try { json = JSON.parse(res.responseText); }
-            catch (_) { throw new Error('Sign JSON parse error: ' + res.responseText.slice(0, 80)); }
-
-            if (!json?.token || !json?.ex)
-                throw new Error('Sign response payload empty: ' + res.responseText.slice(0, 80));
-
-            return { token: json.token, ex: json.ex };
-        }
-
-        // ── resolveBulkFile (module-scope export) ─────────────────────────────
-        // GAP 13 fix: removed the albumGalleryCache "fast-path" (GAP 2, prior
-        // revision). `/api/album/gallery`'s `image_url` is a preview/thumbnail
-        // asset — it is never the signed, authenticated original-file CDN URL
-        // that dl.bunkr.cr's sign pipeline produces. Every bulk (and per-item
-        // grid glyph) download that hit this cache was handed a thumbnail URL
-        // to download as if it were the file; the CDN correctly rejected the
-        // request, surfacing as a uniform SERVER_BAD_CONTENT across every
-        // item. There is no valid fast-path around the signed-URL requirement
-        // — every file must go through getNumericId → callMainAPI →
-        // getSignedToken.
-        // GAP 6 fix: 3-retry exponential backoff on API failures.
-        //
-        // Resolution order:
-        //   1. getNumericId (fetch /f/<slug> page, parse __NEXT_DATA__)
-        //   2. callMainAPI  (POST dl.bunkr.cr/api/_001_v2 → CDN base + file path)
-        //   3. getSignedToken (GET glb-apisign.cdn.cr/sign → token + ex)
-        //   4. Assemble signed CDN URL
-        resolveBulkFile = async function _resolveBulkFile(item, attempt = 0) {
-            const MAX_RETRIES = 3;
-
-            try {
-                const { numId, fname }                = await getNumericId(item);
-                item._numId = numId;
-
-                const { cdnBase, filePath, original } = await callMainAPI(numId);
-                const { token, ex }                   = await getSignedToken(filePath);
-                const n      = original || fname || item.name;
-                const cdnURL = `${cdnBase}${filePath}?n=${encodeURIComponent(n)}&token=${token}&ex=${ex}`;
-                logBulk(`  CDN: ${cdnURL.slice(0, 80)}…`, 'dbg');
-                recordUrl(cdnURL, 'api'); // v7: signed resolutions feed the ledger
-                return { cdnURL, fname: n };
-
-            } catch (e) {
-                // Exponential backoff retry for transient failures (429, network errors)
-                if (attempt < MAX_RETRIES) {
-                    const backoff = Math.pow(2, attempt) * 1000;
-                    logBulk(
-                        `  Retry ${attempt + 1}/${MAX_RETRIES} for ${item.name} in ${backoff}ms: ${e.message}`,
-                        'dbg'
-                    );
-                    await sleep(backoff);
-                    return _resolveBulkFile(item, attempt + 1);
-                }
-                throw e;
-            }
-        };
 
         // ── downloadBulkFile ──────────────────────────────────────────────────
         // GAP 5/8 fix: GM_download exposes no native `timeout` option, so the
@@ -1979,8 +2615,36 @@
                         BulkState.done++;
                         logBulk(`✓ OK: ${fname}`, 'ok');
                     } catch (e) {
-                        BulkState.failed++;
-                        logBulk(`✗ ERR: ${item.name} — ${e.message}`, 'err');
+                        // v7.2.0 [A5]: one archive resurrection attempt per
+                        // failed item — a deleted/DMCA'd file is dead live,
+                        // but the page snapshot still carries its links. The
+                        // archive tier is abort-aware and memoised, so STOP
+                        // and duplicate failures cannot amplify it.
+                        let archivedUrl = null;
+                        if (ARCHIVE_ENABLED() && item.filePageURL && !BulkState.aborted) {
+                            try {
+                                logBulk(`🗄 ARCH: ${item.name} — probing web archive…`, 'dbg');
+                                archivedUrl = await resolveViaWebArchive(
+                                    [item.filePageURL],
+                                    { preferPlaylist: false }
+                                );
+                            } catch (_) { archivedUrl = null; }
+                        }
+                        if (archivedUrl) {
+                            try {
+                                setBulkStatus(`⟳ DL: ${item.name} (ARCHIVED)`);
+                                logBulk(`↓ DL: ${item.name} (archived)`, 'inf');
+                                await downloadBulkFile(archivedUrl, item.name);
+                                BulkState.done++;
+                                logBulk(`✓ OK: ${item.name} — via web archive`, 'ok');
+                            } catch (e2) {
+                                BulkState.failed++;
+                                logBulk(`✗ ERR: ${item.name} — ${e2.message} (archive retry failed)`, 'err');
+                            }
+                        } else {
+                            BulkState.failed++;
+                            logBulk(`✗ ERR: ${item.name} — ${e.message}`, 'err');
+                        }
                     } finally {
                         // GAP 10 fix: previously `running--` happened here and
                         // the DELAY_MS sleep ran *after*, outside the finally.
@@ -2143,6 +2807,7 @@
         const onSpaNav = () => {
             observer.disconnect();
             _sortExecuted = false;
+            _ledgerEpoch = Date.now(); // v7.1.0: playlist fast-path must not leak across routes
             clearTimeout(_spaNavTimer);
             _spaNavTimer = setTimeout(() => {
                 if (document.body) {
