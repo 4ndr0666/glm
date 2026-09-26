@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# 4ndr0666OS: Null-Sector Purge Protocol (v1.4 — Suite-Integrated)
+# 4ndr0666OS: Null-Sector Purge Protocol (v1.5 — Suite-Integrated, suite v1.5.0)
 # - Logic: Mandatory --force gate for kinetic liquidation.
 # - Integration: Aligned to 4ndr0service common.sh (XDG paths, logging).
+# - v1.5: source-safe bootstrap guard; hard timeouts on the AUR orphan
+#   rebuild and the orphan harvest; sys_py_ver fallback when /usr/bin/python3
+#   is unavailable so the purge sequence can never abort without diagnostics.
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -27,7 +30,7 @@ source "$PKG_PATH/common.sh"
 log_purge() { echo -e "\033[38;5;196m[Ψ-PURGE]\033[0m $*"; }
 
 show_usage() {
-    log_purge "Purge Protocol v1.4"
+    log_purge "Purge Protocol v1.5 (suite v${SUITE_VERSION:-1.5.0})"
     echo -e "Usage: $(basename "$0") [options]"
     echo -e ""
     echo -e "${C_BLUE}Operational Vectors:${C_RESET}"
@@ -62,7 +65,11 @@ run_purge() {
     log_success "Broken symlinks purged from $BIN_DIR."
 
     local sys_py_ver
-    sys_py_ver=$(/usr/bin/python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+    # GAP-H FIX: bare failure here (no /usr/bin/python3, e.g. a broken base
+    # install) aborted the whole purge mid-sequence with zero diagnostics
+    # under set -e. Degrade to "unknown" and keep liquidating — the dead-
+    # runtime scan simply widens its exclusion net on such hosts.
+    sys_py_ver=$(/usr/bin/python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "unknown")
     log_info "Target Runtime: $sys_py_ver"
 
     local aur_helper=""
@@ -82,10 +89,11 @@ run_purge() {
             [[ -z "$dead_dir" ]] && continue
             log_info "Harvesting orphans from: $dead_dir"
             mapfile -t -O "${#orphan_pkgs[@]}" orphan_pkgs < <(
-                find "$dead_dir" -type f 2>/dev/null \
-                | xargs -r pacman -Qo 2>/dev/null \
-                | awk '/is owned by/ {print $5}' \
-                | sort -u
+                # GUP 4.2: the harvest walks a full runtime tree and shells out
+                # to pacman for every file — bounded so a pathological tree can
+                # never wedge the purge.
+                run_bounded 600 "orphan harvest ($(basename "$dead_dir"))" \
+                    bash -c 'find "$1" -type f 2>/dev/null | xargs -r pacman -Qo 2>/dev/null | awk "/is owned by/ {print \$5}" | sort -u' _ "$dead_dir"
             )
         done
 
@@ -94,7 +102,16 @@ run_purge() {
             mapfile -t unique_orphans < <(printf "%s\n" "${orphan_pkgs[@]}" | sort -u)
 
             log_purge "Re-compiling offensive tools into native stack..."
-            "$aur_helper" -S --rebuild --noconfirm --needed "${unique_orphans[@]}"
+            # GUP 4.2: AUR rebuilds legitimately take tens of minutes (they
+            # compile against the native stack). A one-hour hard ceiling still
+            # guarantees the oneshot timer can never hang forever while leaving
+            # realistic build headroom. Failure semantics preserved: baseline
+            # aborted the purge on rebuild failure; this does the same, loudly.
+            if ! run_bounded 3600 "AUR orphan rebuild" \
+                "$aur_helper" -S --rebuild --noconfirm --needed "${unique_orphans[@]}"; then
+                log_error "AUR orphan rebuild failed (build error or 3600s ceiling exceeded)."
+                return 1
+            fi
             log_success "Orphan migration complete."
         else
             log_info "No orphan packages detected."
@@ -115,22 +132,33 @@ run_purge() {
     log_purge "EXECUTION COMPLETE."
 }
 
-if [[ $# -eq 0 ]]; then
-    show_usage
-    exit 0
-fi
-
-case "$1" in
-    -h|--help)
+# ──────────────────────────────────────────────────────────────────────────────
+# STANDALONE BOOTSTRAP GUARD (GAP-B FIX)
+# view/cli.sh and view/dialog.sh source this file inline (see their ISSUE-06
+# comments) to call run_purge() without re-acquiring the common.sh flock mutex
+# in a subprocess. The --force gate below MUST only run when this file is
+# executed directly — without this guard, sourcing the file from a menu
+# session with no positional parameters executed `show_usage; exit 0`,
+# terminating the whole CLI/dialog process instead of returning to the menu.
+# ──────────────────────────────────────────────────────────────────────────────
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    if [[ $# -eq 0 ]]; then
         show_usage
         exit 0
-        ;;
-    --force)
-        run_purge
-        ;;
-    *)
-        log_warn "Unknown option: $1"
-        show_usage
-        exit 1
-        ;;
-esac
+    fi
+
+    case "$1" in
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        --force)
+            run_purge
+            ;;
+        *)
+            log_warn "Unknown option: $1"
+            show_usage
+            exit 1
+            ;;
+    esac
+fi

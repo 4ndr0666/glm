@@ -14,6 +14,16 @@ if [[ -n "${COMMON_SOURCED:-}" ]]; then
 fi
 COMMON_SOURCED=1
 
+# =============================================================================
+# 0. SUITE IDENTITY (v1.5.0 unified version bump)
+# =============================================================================
+# Single source of truth for the suite version. Every component banner
+# (main.sh --version, ascension.sh / purge_matrix.sh usage lines) references
+# this constant so the suite can never again ship mismatched version strings
+# (the baseline shipped "Ascension Protocol v8.3" in its header against
+# "v8.4" in its own usage output).
+export SUITE_VERSION="1.5.0"
+
 # ──────────────────────────────────────────────────────────────────────────────
 # [4NDR0666OS] AUTONOMIC MUTEX LOCK (USER-SCOPED)
 # Placed INSIDE the COMMON_SOURCED guard so that chained source() calls within
@@ -121,21 +131,59 @@ ensure_pkg_path
 # =============================================================================
 # 4. LOGGING & ERROR HANDLING
 # =============================================================================
+# GAP-E FIX: LOG_FILE was declared (and its directory created by
+# ensure_xdg_dirs) but no log_* function ever wrote to it — main.sh --test
+# cat'ed a file that never existed and the documented "structured logs for
+# testing" contract was unfulfilled. Every log_* emitter now tees one
+# ANSI-free line into $LOG_FILE in addition to its byte-identical stdout/stderr
+# output. The file sink can NEVER fail a caller: append errors (missing parent
+# dir, full disk, read-only mount) are swallowed at the failure site, and
+# single-line appends through '>>' are O_APPEND-atomic for line-sized writes,
+# safe under the suite's flock serialization.
+
+_log_file_write() {
+    # $1 = timestamp, $2 = level tag, $3 = message (already IFS-joined).
+    # Fast path: one O_APPEND printf, zero forks. On first-write failure
+    # (standalone entry points like ascension.sh / purge_matrix.sh executed
+    # directly bypass initialize_suite, so the log dir may not exist yet),
+    # bootstrap the directory once per process and retry; afterwards degrade
+    # silently so the sink can never fail a caller.
+    if ! printf '%s [%s] %s\n' "$1" "$2" "$3" >>"$LOG_FILE" 2>/dev/null; then
+        if [[ -z "${_LOG_DIR_BOOTSTRAPPED:-}" ]]; then
+            _LOG_DIR_BOOTSTRAPPED=1
+            mkdir -p -- "$(dirname -- "$LOG_FILE")" 2>/dev/null || true
+            printf '%s [%s] %s\n' "$1" "$2" "$3" >>"$LOG_FILE" 2>/dev/null || true
+        fi
+    fi
+    return 0
+}
 
 log_info() {
-    printf "${C_BLUE}[INFO]${C_RESET} %s %s\n" "$(date +'%H:%M:%S')" "$*"
+    local ts
+    ts="$(date +'%H:%M:%S')"
+    printf "${C_BLUE}[INFO]${C_RESET} %s %s\n" "$ts" "$*"
+    _log_file_write "$ts" "INFO" "$*"
 }
 
 log_success() {
-    printf "${C_GREEN}[OK]${C_RESET}   %s %s\n" "$(date +'%H:%M:%S')" "$*"
+    local ts
+    ts="$(date +'%H:%M:%S')"
+    printf "${C_GREEN}[OK]${C_RESET}   %s %s\n" "$ts" "$*"
+    _log_file_write "$ts" "OK" "$*"
 }
 
 log_warn() {
-    printf "${C_YELLOW}[WARN]${C_RESET} %s %s\n" "$(date +'%H:%M:%S')" "$*" >&2
+    local ts
+    ts="$(date +'%H:%M:%S')"
+    printf "${C_YELLOW}[WARN]${C_RESET} %s %s\n" "$ts" "$*" >&2
+    _log_file_write "$ts" "WARN" "$*"
 }
 
 log_error() {
-    printf "${C_RED}[FAIL]${C_RESET} %s %s\n" "$(date +'%H:%M:%S')" "$*" >&2
+    local ts
+    ts="$(date +'%H:%M:%S')"
+    printf "${C_RED}[FAIL]${C_RESET} %s %s\n" "$ts" "$*" >&2
+    _log_file_write "$ts" "FAIL" "$*"
 }
 
 handle_error() {
@@ -217,7 +265,10 @@ install_sys_pkg() {
         pacman_cmd=(sudo "${pacman_cmd[@]}")
     fi
     log_info "Deploying $pkg via Pacman..."
-    "${pacman_cmd[@]}"
+    # GUP 4.2: hard ceiling on the pacman transaction itself — the 60s lock
+    # wait above bounds contention, this bounds the install (large packages on
+    # slow links can otherwise stall a systemd oneshot indefinitely).
+    run_bounded 600 "pacman deploy $pkg" "${pacman_cmd[@]}"
 }
 
 # =============================================================================
@@ -384,8 +435,20 @@ run_parallel_checks() {
 # 9. SUITE INITIALIZATION
 # =============================================================================
 
+_rotate_log_if_large() {
+    # Bound LOG_FILE growth: rotate to a single .1 generation past 512 KiB.
+    # One previous generation is sufficient at the systemd timer's daily
+    # cadence; stat failures (missing file) degrade to size 0 = no rotation.
+    local -i size=0
+    size="$(stat -c %s "$LOG_FILE" 2>/dev/null || echo 0)"
+    if (( size > 524288 )); then
+        mv -f "$LOG_FILE" "${LOG_FILE}.1" 2>/dev/null || true
+    fi
+}
+
 initialize_suite() {
     ensure_xdg_dirs
+    _rotate_log_if_large
     path_prepend "${XDG_BIN_HOME}"
     load_config
     log_success "4ndr0service initialized."

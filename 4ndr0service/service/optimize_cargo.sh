@@ -20,8 +20,10 @@ optimize_cargo_service() {
     # 1. Rustup Infrastructure
     if ! command -v rustup &>/dev/null; then
         log_info "Rustup missing from Hive. Initiating deployment..."
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-            | sh -s -- -y --no-modify-path \
+        # GUP 4.2: pipefail re-asserted inside the child; 600s ceiling on the
+        # remote rustup bootstrap.
+        run_bounded 600 "rustup bootstrap" \
+            bash -c 'set -o pipefail; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path' \
             || handle_error "$LINENO" "Rustup deployment failed."
     fi
 
@@ -69,7 +71,7 @@ optimize_cargo_service() {
             else
                 if [[ "$has_updater" == "true" ]]; then
                     log_info "Checking delta for: $tool"
-                    cargo install-update "$tool" || log_warn "Delta sync failed: $tool"
+                    run_bounded 600 "cargo install-update $tool" cargo install-update "$tool" || log_warn "Delta sync failed: $tool"
                 else
                     log_info "Forcing update for: $tool"
                     run_bounded 300 "cargo install $tool" cargo install "$tool" || log_warn "Force update failed: $tool"
@@ -94,5 +96,12 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
     # shellcheck source=/dev/null
     source "$PKG_PATH/common.sh"
+    # GAP-J FIX: standalone runs previously skipped suite initialization —
+    # CONFIG_FILE could be absent, so every jq read silently failed and tool
+    # sync was silently skipped. initialize_suite guarantees the XDG dirs,
+    # the config file and the jq dependency exactly as the main.sh entry
+    # point does (idempotent; the flock mutex is already held from the
+    # common.sh source above).
+    initialize_suite
     optimize_cargo_service
 fi

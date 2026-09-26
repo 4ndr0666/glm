@@ -36,7 +36,7 @@ optimize_venv_service() {
     if [[ ! -d "$VENV_PATH" ]]; then
         log_info "Initializing Main Hive Venv: $VENV_PATH"
         ensure_dir "$VENV_HOME"
-        python3 -m venv "$VENV_PATH"
+        run_bounded 300 "Main Hive venv init" python3 -m venv "$VENV_PATH"
     fi
 
     # 2. Hive Core Update
@@ -47,7 +47,7 @@ optimize_venv_service() {
     # the ERR trap under set -euo pipefail and killing the service run.
     # shellcheck disable=SC1091
     if source "$VENV_PATH/bin/activate" 2>/dev/null; then
-        pip install --upgrade pip || log_warn "Hive Pip upgrade suppressed (Check network/build)."
+        run_bounded 300 "Hive pip upgrade" pip install --upgrade pip || log_warn "Hive Pip upgrade suppressed (Check network/build)."
         deactivate
     else
         log_warn "Could not activate venv at $VENV_PATH — skipping pip upgrade. Venv may be corrupted; run with --fix to recreate."
@@ -69,7 +69,7 @@ optimize_venv_service() {
 
             for bpkg in $broken_pkgs; do
                 log_info "Attempting Sector Repair: $bpkg"
-                if ! pipx install --force "$bpkg"; then
+                if ! run_bounded 900 "pipx sector repair ($bpkg)" pipx install --force "$bpkg"; then
                     log_error "Metadata Deadlock: Repair failed for $bpkg"
 
                     if ! pipx uninstall "$bpkg"; then
@@ -105,7 +105,7 @@ optimize_venv_service() {
             # rather than scraping free text.
             if ! (pipx list --short 2>/dev/null || true) | awk '{print $1}' | grep -qx "$p"; then
                 log_info "Deploying: $p"
-                pipx install "$p" || log_warn "Deployment failed: $p"
+                run_bounded 900 "pipx install $p" pipx install "$p" || log_warn "Deployment failed: $p"
             fi
         done
     fi
@@ -136,5 +136,12 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
     # shellcheck source=/dev/null
     source "$PKG_PATH/common.sh"
+    # GAP-J FIX: standalone runs previously skipped suite initialization —
+    # CONFIG_FILE could be absent, so every jq read silently failed and tool
+    # sync was silently skipped. initialize_suite guarantees the XDG dirs,
+    # the config file and the jq dependency exactly as the main.sh entry
+    # point does (idempotent; the flock mutex is already held from the
+    # common.sh source above).
+    initialize_suite
     optimize_venv_service
 fi

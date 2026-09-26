@@ -26,6 +26,7 @@ modify_settings() {
 fallback_editor() {
     PS3="Select editor: "
     local editors=("vim" "nano" "emacs" "micro" "lite-xl" "Exit")
+    local opt
     select opt in "${editors[@]}"; do
         case $opt in
         "Exit") break ;;
@@ -62,6 +63,7 @@ prompt_config_value() {
             if [[ -n "$_known_versions" ]] && ! echo "$_known_versions" | grep -qxF "$val"; then
                 log_warn "python_version '$val' not found in pyenv versions:"
                 pyenv versions --bare 2>/dev/null | sed 's/^/    /'
+                local _force
                 read -rp "Write anyway? (y/N): " _force
                 if [[ "${_force,,}" != "y" ]]; then
                     log_info "Aborted — config.json unchanged."

@@ -87,9 +87,20 @@ optimize_nvm_service() {
     node_ver=$(jq -r '.node_version // "lts/*"' "$CONFIG_FILE")
     
     log_info "Aligning Hive Node to: $node_ver"
-    nvm install "$node_ver"
-    nvm alias default "$node_ver"
-    
+    # GUP 4.2: nvm is a shell FUNCTION, not an executable — timeout(1) cannot
+    # invoke it directly, so each nvm operation is bounded through a bash -c
+    # child that re-sources nvm.sh. Hard ceilings prevent a hung node
+    # download/compile from wedging the systemd oneshot or the CLI menu.
+    if ! run_bounded 900 "nvm install $node_ver" \
+        bash -c 'source "${NVM_DIR}/nvm.sh" && nvm install "$1"' _ "$node_ver"; then
+        log_error "nvm install failed for $node_ver."
+        return 1
+    fi
+    if ! run_bounded 60 "nvm alias default $node_ver" \
+        bash -c 'source "${NVM_DIR}/nvm.sh" && nvm alias default "$1"' _ "$node_ver"; then
+        log_warn "nvm alias default failed for $node_ver — the runtime itself is installed."
+    fi
+
     log_success "NVM Synchronization Complete."
 }
 
@@ -107,5 +118,12 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
     # shellcheck source=/dev/null
     source "$PKG_PATH/common.sh"
+    # GAP-J FIX: standalone runs previously skipped suite initialization —
+    # CONFIG_FILE could be absent, so every jq read silently failed and tool
+    # sync was silently skipped. initialize_suite guarantees the XDG dirs,
+    # the config file and the jq dependency exactly as the main.sh entry
+    # point does (idempotent; the flock mutex is already held from the
+    # common.sh source above).
+    initialize_suite
     optimize_nvm_service
 fi

@@ -49,17 +49,17 @@ optimize_ruby_service() {
             # We omit --user-install to force installation into our exported GEM_HOME
             if ! gem list -i "$gem" &>/dev/null; then
                 log_info "Deploying Gem: $gem"
-                gem install --no-document "$gem" || log_warn "Gem failed to deploy: $gem"
+                run_bounded 600 "gem install $gem" gem install --no-document "$gem" || log_warn "Gem failed to deploy: $gem"
             else
                 log_info "Syncing Gem state: $gem"
-                gem update --no-document "$gem" || log_warn "Gem update suppressed: $gem"
+                run_bounded 600 "gem update $gem" gem update --no-document "$gem" || log_warn "Gem update suppressed: $gem"
             fi
         done
     fi
 
     # 4. Artifact Liquidation
     log_info "Purging stale Gem artifacts..."
-    gem cleanup 2>/dev/null || true
+    run_bounded 300 "gem cleanup" gem cleanup 2>/dev/null || true
 
     log_success "Ruby Matrix Calibrated. Active: $(ruby -v | awk '{print $2}')"
 }
@@ -78,5 +78,12 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
     # shellcheck source=/dev/null
     source "$PKG_PATH/common.sh"
+    # GAP-J FIX: standalone runs previously skipped suite initialization —
+    # CONFIG_FILE could be absent, so every jq read silently failed and tool
+    # sync was silently skipped. initialize_suite guarantees the XDG dirs,
+    # the config file and the jq dependency exactly as the main.sh entry
+    # point does (idempotent; the flock mutex is already held from the
+    # common.sh source above).
+    initialize_suite
     optimize_ruby_service
 fi

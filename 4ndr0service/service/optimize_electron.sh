@@ -52,10 +52,10 @@ optimize_electron_service() {
     for tool in "${e_tools[@]}"; do
         if ! npm list -g --depth=0 "$tool" &>/dev/null; then
             log_info "Deploying: $tool"
-            npm install -g "$tool" || log_warn "Deployment failed: $tool"
+            run_bounded 600 "npm install -g $tool" npm install -g "$tool" || log_warn "Deployment failed: $tool"
         else
             log_info "Syncing tool state: $tool"
-            npm update -g "$tool" || log_warn "Sync failed: $tool"
+            run_bounded 600 "npm update -g $tool" npm update -g "$tool" || log_warn "Sync failed: $tool"
         fi
     done
 
@@ -93,5 +93,12 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
     # shellcheck source=/dev/null
     source "$PKG_PATH/common.sh"
+    # GAP-J FIX: standalone runs previously skipped suite initialization —
+    # CONFIG_FILE could be absent, so every jq read silently failed and tool
+    # sync was silently skipped. initialize_suite guarantees the XDG dirs,
+    # the config file and the jq dependency exactly as the main.sh entry
+    # point does (idempotent; the flock mutex is already held from the
+    # common.sh source above).
+    initialize_suite
     optimize_electron_service
 fi

@@ -89,7 +89,9 @@ record_prune run_prune "Pip3 cache" pip3 cache purge || true
 record_prune run_prune "Poetry cache" poetry cache clear --all pypi -n || true
 record_prune run_prune "Conda cache" conda clean --all -y || true
 if ! rm -rf "${HOME}/.cache/pip"; then prune_failed=1; fi
-if ! find "${HOME}" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null; then prune_failed=1; fi
+# GUP 4.2: the home-wide __pycache__ sweep is the one unbounded filesystem
+# walk in this script — a large HOME could previously stall the prune forever.
+if ! run_bounded 600 "pycache sweep" find "${HOME}" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null; then prune_failed=1; fi
 
 if (( prune_failed != 0 )); then
     echo "[ERROR] One or more prune operations failed." >&2

@@ -28,6 +28,7 @@ Usage: $0 [options]
 
 Options:
   --help       Show this help message.
+  --version    Print the suite version and exit.
   --report     Print a summary report after checks.
   --fix        Attempt to automatically fix detected issues.
   --parallel   Run independent checks in parallel.
@@ -52,6 +53,10 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
     --help)
         show_help
+        exit 0
+        ;;
+    --version)
+        echo "4ndr0service suite v${SUITE_VERSION:-unknown}"
         exit 0
         ;;
     --report)

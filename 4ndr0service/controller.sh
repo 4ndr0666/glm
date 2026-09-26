@@ -88,16 +88,31 @@ run_all_services() {
     fi
 
     local -a services
+    # NOTE: optimize_nvm_service is deliberately excluded from the sequential
+    # batch — it is owned by optimize_node_service as its prerequisite (which
+    # sources and executes it inline), so batching it here would run the full
+    # NVM install path twice per pass. Single-run interactive access is
+    # provided by the CLI/dialog "NVM Optimization" menu entries and by direct
+    # standalone execution of service/optimize_nvm.sh.
     mapfile -t services < <(declare -F | awk '{print $3}' | grep '^optimize_.*_service$' | grep -v '^optimize_nvm_service$')
 
     local status=0
     for svc in "${services[@]}"; do
+        # D-08 ACTIVATION (auto-healing): batch runs execute each service in
+        # recoverable mode — an explicit handle_error() inside a service logs
+        # and returns instead of exiting, so ONE failed service can no longer
+        # abort the entire healing pass (baseline: the systemd oneshot died
+        # mid-run, skipping every remaining service, often with a masked
+        # exit 0). Overall failure propagation is preserved: each non-zero
+        # return still marks status=1 for the final rc.
+        export _ALLOW_ERRORS=1
         if "$svc"; then
             continue
         fi
         log_error "$svc failed."
         status=1
     done
+    unset _ALLOW_ERRORS
 
     if (( status != 0 )); then
         log_error "One or more services failed."
@@ -115,10 +130,21 @@ run_parallel_services() {
         source_all_services
     fi
 
+    # D-08 ACTIVATION (auto-healing): parallel workers inherit recoverable
+    # mode so a failure in one worker is reported (rc via run_parallel_checks)
+    # without killing its siblings mid-flight.
+    export _ALLOW_ERRORS=1
     run_parallel_checks \
         "optimize_go_service" \
         "optimize_ruby_service" \
         "optimize_cargo_service"
+    local _par_rc=$?
+    unset _ALLOW_ERRORS
+
+    if (( _par_rc != 0 )); then
+        log_error "One or more parallel services failed (rc=$_par_rc)."
+        return "$_par_rc"
+    fi
 
     log_success "Parallel services completed."
     touch "${XDG_CACHE_HOME}/.scr_dirty"

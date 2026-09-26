@@ -61,7 +61,7 @@ optimize_node_service() {
 
     # Enable corepack shims BEFORE syncing global tools
     if command -v corepack &>/dev/null; then
-        corepack enable
+        run_bounded 120 "corepack enable" corepack enable
         log_info "Corepack shims refreshed."
     fi
 
@@ -89,24 +89,24 @@ optimize_node_service() {
 
         if command -v "$tool" &>/dev/null || npm list -g --depth=0 "$tool" &>/dev/null 2>&1; then
             log_info "Syncing tool state: $tool"
-            npm update -g "$tool" || log_warn "NPM sync failed: $tool"
+            run_bounded 600 "npm update -g $tool" npm update -g "$tool" || log_warn "NPM sync failed: $tool"
         else
             log_info "Isolated Deployment: $tool"
-            npm install -g "$tool" || log_warn "NPM failed to deploy: $tool"
+            run_bounded 600 "npm install -g $tool" npm install -g "$tool" || log_warn "NPM failed to deploy: $tool"
         fi
     done
 
     # 5. Corepack-managed tool activation (D-12 FIX)
     if command -v corepack &>/dev/null; then
         log_info "Activating corepack-managed tools (yarn, pnpm)..."
-        corepack prepare yarn@stable --activate 2>/dev/null || log_warn "corepack yarn activation suppressed"
-        corepack prepare pnpm@latest --activate 2>/dev/null || log_warn "corepack pnpm activation suppressed"
+        run_bounded 300 "corepack yarn activation" corepack prepare yarn@stable --activate 2>/dev/null || log_warn "corepack yarn activation suppressed"
+        run_bounded 300 "corepack pnpm activation" corepack prepare pnpm@latest --activate 2>/dev/null || log_warn "corepack pnpm activation suppressed"
     fi
 
     # 6. Specialized Store Maintenance
     if command -v pnpm &>/dev/null; then
         log_info "Pruning PNPM store sector..."
-        pnpm store prune >/dev/null 2>&1 || true
+        run_bounded 300 "pnpm store prune" pnpm store prune >/dev/null 2>&1 || true
     fi
 
     log_success "Node Matrix Calibrated. Active: $(node --version)"
@@ -125,5 +125,12 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
     # shellcheck source=/dev/null
     source "$PKG_PATH/common.sh"
+    # GAP-J FIX: standalone runs previously skipped suite initialization —
+    # CONFIG_FILE could be absent, so every jq read silently failed and tool
+    # sync was silently skipped. initialize_suite guarantees the XDG dirs,
+    # the config file and the jq dependency exactly as the main.sh entry
+    # point does (idempotent; the flock mutex is already held from the
+    # common.sh source above).
+    initialize_suite
     optimize_node_service
 fi

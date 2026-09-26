@@ -9,7 +9,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # shellcheck source=../common.sh
-source "${PKG_PATH:-.}/common.sh"
+source "${PKG_PATH:-.}./common.sh"
 
 # D-17 FIX (clarification): Do NOT set FIX_MODE / REPORT_MODE inside THIS file
 # at source-time. The correct pattern is for callers (final_audit.sh, main.sh)
@@ -102,19 +102,22 @@ _provision_hive() {
     local target_venv="${VENV_HOME}/${hive}"
     ensure_dir "$VENV_HOME"
 
-    python3 -m venv "$target_venv" || {
+    # GUP 4.2: the fallback path carries the same hard timeouts as the
+    # ascension inject vector — a hung venv create or pip install must never
+    # wedge an audit run.
+    run_bounded 300 "fallback venv create ($hive)" python3 -m venv "$target_venv" || {
         local rc=$?
         log_error "_provision_hive: failed to create venv for $hive"
         return "$rc"
     }
 
-    "$target_venv/bin/pip" install --quiet --upgrade pip || {
+    run_bounded 300 "fallback pip upgrade ($hive)" "$target_venv/bin/pip" install --quiet --upgrade pip || {
         local rc=$?
         log_error "_provision_hive: failed to bootstrap pip for $hive"
         return "$rc"
     }
 
-    "$target_venv/bin/pip" install "$hive" || {
+    run_bounded 900 "fallback pip install $hive" "$target_venv/bin/pip" install "$hive" || {
         local rc=$?
         log_error "_provision_hive: failed to install $hive"
         return "$rc"

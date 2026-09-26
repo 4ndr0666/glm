@@ -25,7 +25,11 @@ optimize_go_service() {
             :
         else
             local rc=$?
-            handle_error "$LINENO" "Go deployment failed."
+            # D-26 FIX: pass the captured rc explicitly — handle_error defaults
+            # its exit_code to $?, which here was clobbered to 0 by the `local`
+            # assignment itself, so deployment failures previously propagated
+            # as a silent SUCCESS (exit 0) through handle_error.
+            handle_error "$LINENO" "Go deployment failed." "$rc"
             return "$rc"
         fi
     fi
@@ -47,13 +51,13 @@ optimize_go_service() {
         for tool in "${g_tools[@]}"; do
             log_info "Processing Binary Vector: $tool"
             # Go install is idempotent; it only rebuilds if the source has changed
-            go install "$tool" || log_warn "Go failed to deploy: $tool"
+            run_bounded 600 "go install $tool" go install "$tool" || log_warn "Go failed to deploy: $tool"
         done
     fi
 
     # 4. Artifact Liquidation (Build Cache)
     log_info "Purging Go build artifacts..."
-    go clean -cache || true
+    run_bounded 300 "go clean -cache" go clean -cache || true
 
     log_success "Go Matrix Calibrated. Active: $(go version | awk '{print $3}')"
 }
@@ -72,5 +76,12 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
     # shellcheck source=/dev/null
     source "$PKG_PATH/common.sh"
+    # GAP-J FIX: standalone runs previously skipped suite initialization —
+    # CONFIG_FILE could be absent, so every jq read silently failed and tool
+    # sync was silently skipped. initialize_suite guarantees the XDG dirs,
+    # the config file and the jq dependency exactly as the main.sh entry
+    # point does (idempotent; the flock mutex is already held from the
+    # common.sh source above).
+    initialize_suite
     optimize_go_service
 fi
