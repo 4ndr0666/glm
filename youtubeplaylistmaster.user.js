@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         4ndr0tools - YouTube Playlist Master
 // @namespace    https://github.com/4ndr0666
-// @version      1.0.0
-// @description  Channel playlist buttons (All / Popular / Videos / Shorts / Streams / Members-only), Random play (prefer newest/oldest), reverse autoplay order, playlist autoplay toggle, duration sort, bulk copy/move/delete, JSON + plaintext export/import, snapshots with deleted-video detection, quick watch_videos playlists, queue & watch-later overlays, playlist close button, date/view metadata, episode auto-expand, huge-playlist browser.
+// @version      1.2.0
+// @description  Channel playlist buttons (All / Popular / Videos / Shorts / Streams / Members-only), Random play (prefer newest/oldest), reverse autoplay order, playlist autoplay toggle, duration sort, bulk copy/move/delete, JSON + plaintext export/import, snapshots with deleted-video detection, quick watch_videos playlists, queue & watch-later overlays, playlist close button, date/view metadata, episode auto-expand, huge-playlist browser, live settings (no reload), always-available Ψ deck, playlist row filter, duplicate finder & purge, global hotkeys (Alt+Shift+U/S/X) and failsafe deck rescue.
 // @author       4ndr0666
 // @license      UNLICENSED REDTEAM ONLY
 // @match        https://*.youtube.com/*
+// @match        https://youtube.com/*
 // @icon         data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%2300E5FF%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M%2064%2C12%20A%2052%2C52%200%201%201%2063.9%2C12%20Z%22%20stroke-width%3D%222%22%20stroke-dasharray%3D%2221.78%2021.78%22%2F%3E%3Cpath%20d%3D%22M%2064%2C20%20A%2044%2C44%200%201%201%2063.9%2C20%20Z%22%20stroke-width%3D%221.5%22%20opacity%3D%220.7%22%20stroke-dasharray%3D%2210%2010%22%2F%3E%3Cpath%20d%3D%22M64%2030%20L91.3%2047%20L91.3%2081%20L64%2098%20L36.7%2081%20L36.7%2047%20Z%22%2F%3E%3C%2Fg%3E%3Ctext%20x%3D%2264%22%20y%3D%2267%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%20fill%3D%22%2300E5FF%22%20font-size%3D%2256%22%20font-weight%3D%22700%22%20font-family%3D%22serif%22%3E%CE%A8%3C%2Ftext%3E%3C%2Fsvg%3E
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -15,12 +16,12 @@
 // @grant        unsafeWindow
 // @run-at       document-idle
 // @noframes
-// @downloadURL  https://github.com/4ndr0666/userscripts/
-// @updateURL    https://www.github.com/4ndr0666/userscripts/
+// @downloadURL  https://raw.githubusercontent.com/4ndr0666/glm/main/youtubeplaylistmaster.user.js
+// @updateURL    https://raw.githubusercontent.com/4ndr0666/glm/main/youtubeplaylistmaster.user.js
 // ==/UserScript==
 
 /* ============================================================================
- * YOUTUBE PLAYLIST MASTER v1.0.0 — playlist suite for YouTube
+ * YOUTUBE PLAYLIST MASTER v1.2.0 — playlist suite for YouTube
  * ============================================================================
  *
  * PARADIGM (GUP D1 — declared before any line of logic):
@@ -43,6 +44,59 @@
  * Orbitron display (declared with monospace fallbacks — no external font
  * loading, zero network), 150ms ease-in-out transitions, rectangular
  * brutalist buttons, cyan glow containment fields, 6px cyan scrollbars.
+ *
+ * CHANGELOG v1.1.0 (GUP v5.3 superset of v1.0.0):
+ *   - FIX: deck was invisible outside /playlist and /feed/subscriptions — the
+ *     Ψ badge now docks on every YouTube surface (appearance.deckEverywhere,
+ *     default on) while sections stay contextual.
+ *   - FIX: modal action buttons (Settings "Done", diff "Close") were dead —
+ *     unannotated modal actions now close their dialog.
+ *   - FIX: copy/move bulk ops ran outside the UI lock — the lock now spans the
+ *     destination picker's confirmed operation.
+ *   - FIX: DOMADAPTER route handler read a fresh classify() lacking .reason,
+ *     clearing selection on navigate-start contrary to intent.
+ *   - FIX: RANDOM engine leaked its updateStorage/badge intervals when random
+ *     mode exited (GUP D4 reclamation).
+ *   - FIX: REVERSE miniplayer detection used a divergent attribute set; now
+ *     reuses isMiniplayerActive(). Failsafe interval now honors the enabled
+ *     flag and live toggles.
+ *   - FIX: MEMBERSTAB crashed when the tab strip raced empty; re-arms on SPA
+ *     channel entry and live-toggles.
+ *   - FIX: SORTER crashed on rows without a #text timestamp; localized count
+ *     text now parses by digit extraction.
+ *   - FIX: EXPORTER DOM-fallback scroll loop is now attempt-bounded (GUP B.1).
+ *   - FIX: PLAYER.redirect could emit list=null on mobile URLs.
+ *   - FIX: PORTABILITY.exportPlaylist dead parameter removed (zero dead code).
+ *   - FIX: @downloadURL/@updateURL now point at the real raw repo path; bare
+ *     youtube.com domain added to @match.
+ *   - ADD: live settings — every feature toggle takes effect immediately,
+ *     no page reload required.
+ *   - ADD: playlist row filter (title substring) in the manager section.
+ *   - ADD: duplicate finder & keep-first purge for the current playlist.
+ *   - ADD: exporter toggle row in Settings (flag existed but had no UI).
+ *
+ * CHANGELOG v1.2.0 (GUP v5.3 superset of v1.1.0):
+ *   - FIX (CRITICAL): v1.0.0/v1.1.0 gated ALL UI mounting behind
+ *     unsafeWindow.ytcfg ("PlaylistPlus boot pattern"). In manager sandboxes
+ *     where page-context JS is not readable, the deck never appeared for 100
+ *     seconds and then only "degraded". The Ψ deck now mounts immediately at
+ *     DOM-ready; ytcfg availability is tracked as STATUS (deck log + bounded
+ *     2-minute poll), never as a boot gate.
+ *   - FIX: a throwing feature .start() aborted every later feature (single
+ *     try/catch around the whole chain) — starts are now fault-isolated per
+ *     module so one broken surface cannot take the rest down.
+ *   - FIX: DECK.mount cached a detached root forever — if YouTube or another
+ *     extension removed the deck node it could never return. mount() now
+ *     detects detachment, resets its element registry and re-mounts; a 5 s
+ *     watchdog re-mounts automatically; the selection-change adapter hook is
+ *     registered exactly once across re-mounts.
+ *   - ADD: §35A HOTKEYS — global Alt+Shift+U (toggle Ψ deck), Alt+Shift+S
+ *     (settings), Alt+Shift+X (force re-show). Alt+Shift combos sit outside
+ *     YouTube's own shortcut map; typing targets are exempt; live toggle in
+ *     Settings (hotkeys.enabled, migration 3→4, default on).
+ *   - ADD: failsafe "Ψ Force show deck (Alt+Shift+X)" manager menu command,
+ *     registered before anything else in boot so it survives partial
+ *     failures.
  * ==========================================================================*/
 
 (function __ytpu_root__() {
@@ -54,7 +108,7 @@
 
     const CFG = {
         SCRIPT_NAME: 'Ψ Playlist Unity',
-        SCRIPT_VERSION: '1.0.0',
+        SCRIPT_VERSION: '1.2.0',
         STORAGE_KEY: 'ytpu.settings',
         SNAPSHOT_KEY: 'ytpu.snapshots',
         SNAPSHOT_CAP: 20,             // FIFO cap for stored playlist snapshots
@@ -497,7 +551,8 @@
         function redirect(videoId, list, extraParam = null) {
             if (ENV.isMobile()) {
                 // Mobile cannot use client-side routing reliably — hard navigate.
-                const q = new URLSearchParams({ v: videoId, list });
+                const q = new URLSearchParams({ v: videoId });
+                if (list) q.set('list', list);
                 if (extraParam) q.set(extraParam.key, extraParam.value);
                 location.href = `${location.origin}/watch?${q.toString()}`;
                 return;
@@ -627,7 +682,8 @@
         const DEFAULTS = {
             version: 1,
             data: {
-                appearance: { theme: 'glass', spacerVisible: true },
+                appearance: { theme: 'glass', spacerVisible: true, deckEverywhere: true },
+                hotkeys: { enabled: true }, // v1.2.0: global Alt+Shift+U/S/X shortcuts
                 channelButtons: {
                     enabled: true, playNext: true, newTabs: false,
                     viewInsteadOfPlay: false, everythingOnVideos: false, randomEnabled: true,
@@ -671,6 +727,8 @@
         const migrations = [
             (previous) => clone(DEFAULTS),                                                                 // 0 -> 1: birth
             (previous) => deepMerge(clone(previous), { data: { exporter: { getVideoDuration: false, getVideoIndex: false } } }), // 1 -> 2
+            (previous) => deepMerge(clone(previous), { data: { appearance: { deckEverywhere: true } } }),                       // 2 -> 3: v1.1.0 always-dock deck
+            (previous) => deepMerge(clone(previous), { data: { hotkeys: { enabled: true } } }),                                 // 3 -> 4: v1.2.0 global hotkeys (default on)
         ];
 
         function migrate(previous) {
@@ -1277,7 +1335,7 @@
     // ╚══════════════════════════════════════════════════════════════════╝
 
     const PORTABILITY = (() => {
-        async function exportPlaylist(playlistId, { includeUnlisted = false } = {}) {
+        async function exportPlaylist(playlistId) {
             const { header, items } = await READER.loadPlaylist(playlistId);
             const cleanItems = items.map((i) => ({
                 videoId: i.videoId,
@@ -1364,6 +1422,8 @@
         const selected = new Map();
         const listeners = new Set();
         let rowSeq = 0;
+        // Live title filter state (deck input drives this; empty = show all).
+        let filterText = '';
 
         function currentPlaylistId() {
             const u = new URL(location.href);
@@ -1427,6 +1487,7 @@
 
         function injectCheckboxes() {
             if (!isPlaylistPage()) return;
+            if (!STORE.data().manager.enabled) return;
             rows().forEach((row) => {
                 if (row.querySelector('.ytpu-cb')) return;
                 if (!row.dataset.ytpuRowKey) row.dataset.ytpuRowKey = `r${++rowSeq}`;
@@ -1451,6 +1512,7 @@
         }
 
         function selectAll() {
+            if (!STORE.data().manager.enabled) return;
             rows().forEach((row) => {
                 if (!row.dataset.ytpuRowKey) row.dataset.ytpuRowKey = `r${++rowSeq}`;
                 const entry = rowEntry(row);
@@ -1460,14 +1522,32 @@
             emit();
         }
 
+        /** Live row filter: hide rows whose title doesn't contain the needle.
+         *  Purely presentational — selection state is untouched, so a hidden
+         *  selected row still participates in bulk operations. */
+        function applyFilter() {
+            if (!isPlaylistPage()) return;
+            const needle = filterText.trim().toLowerCase();
+            rows().forEach((row) => {
+                row.classList.toggle('ytpu-row-hidden', !!needle && !titleOf(row).toLowerCase().includes(needle));
+            });
+        }
+
+        function setFilter(text) {
+            filterText = String(text || '');
+            applyFilter();
+        }
+
         function start() {
             if (observer) return;
-            observer = DOMU.observeDocument(() => { if (isPlaylistPage()) injectCheckboxes(); });
-            NAV.onRoute(() => {
-                if (NAV.classify().reason !== 'navigate-start') {
+            observer = DOMU.observeDocument(() => {
+                if (isPlaylistPage()) { injectCheckboxes(); applyFilter(); }
+            });
+            NAV.onRoute((route) => {
+                if (route.reason !== 'navigate-start') {
                     selected.clear();
                     emit();
-                    setTimeout(() => injectCheckboxes(), 500);
+                    setTimeout(() => { injectCheckboxes(); applyFilter(); }, 500);
                 }
             });
         }
@@ -1475,6 +1555,7 @@
         return {
             currentPlaylistId, isPlaylistPage, onSelectionChange, clearSelection,
             getSelection, rows, injectCheckboxes, selectAll, start, rowEntry,
+            setFilter, applyFilter,
         };
     })();
 
@@ -1721,6 +1802,9 @@ tp-yt-iron-dropdown.ytd-popup-container #contentWrapper > yt-sheet-view-model.yt
 body:has(.ytpu-huge-browser) .ytp-prev-button.ytp-button,
 body:has(.ytpu-huge-browser) .ytp-next-button.ytp-button:not([ytpu-huge="applied"]) { display: none !important; }
 
+/* ——— Playlist row filter (deck manager section) ——— */
+.ytpu-row-hidden { display: none !important; }
+
 /* ——— Duplicate-injection race guard (YTPA pattern) ——— */
 .ytpu-chipbar ~ .ytpu-chipbar { display: none; }
 `;
@@ -1866,6 +1950,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         const elx = {}; // element registry
         const logRing = [];
         let busy = false;
+        let selectionWired = false; // v1.2.0: re-mount-safe single registration of the adapter hook
         let ownedPlaylists = [];
         let ownedTag = null;
 
@@ -1910,7 +1995,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function setActionsDisabled(disabled) {
-            for (const key of ['selall', 'clear', 'copy', 'move', 'delBtn', 'export', 'importLbl', 'snapshot', 'check']) {
+            for (const key of ['selall', 'clear', 'copy', 'move', 'delBtn', 'export', 'importLbl', 'snapshot', 'check', 'plaintext', 'dupes', 'rowFilter']) {
                 if (elx[key]) elx[key].disabled = disabled;
             }
         }
@@ -1922,11 +2007,19 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         function updateVisibility(route) {
             if (!root) return;
-            const show = route.isPlaylistPage || route.isSubscriptions;
+            const show = STORE.data().appearance.deckEverywhere !== false
+                || route.isPlaylistPage || route.isSubscriptions || (route.isWatch && !!route.list);
             root.style.display = show ? '' : 'none';
             elx.secManager.style.display = route.isPlaylistPage ? '' : 'none';
             elx.secSort.style.display = route.isPlaylistPage ? '' : 'none';
             elx.secQuick.style.display = route.isSubscriptions ? '' : 'none';
+            // Leaving a playlist page invalidates the row filter — clear both
+            // the adapter state and the deck input so a stale needle can't hide
+            // rows on the next playlist.
+            if (!route.isPlaylistPage && elx.rowFilter) {
+                if (elx.rowFilter.value) elx.rowFilter.value = '';
+                DOMADAPTER.setFilter('');
+            }
         }
 
         async function loadOwnedPlaylists() {
@@ -2017,6 +2110,10 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         // ---- generic modal (used by exporter & snapshot diff) ----
+        // Action buttons close their dialog after their own handler runs,
+        // unless annotated data-keep-open (e.g. Get list / Copy / Download
+        // must leave the plaintext dialog open). v1.0.0 shipped dead
+        // "Done"/"Close" buttons with no handler at all.
         function modal(title, buildBody, actions = []) {
             const dlg = document.createElement('dialog');
             const card = DOMU.el('div', { class: 'modal-card' });
@@ -2031,7 +2128,12 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             card.appendChild(body);
             if (actions.length) {
                 const foot = DOMU.el('div', { class: 'modal-foot' });
-                for (const a of actions) foot.appendChild(a);
+                for (const a of actions) {
+                    // Listener added after the button's own creation-time handler,
+                    // so it runs once the action has completed its sync phase.
+                    if (!a.hasAttribute('data-keep-open')) a.addEventListener('click', () => dlg.close());
+                    foot.appendChild(a);
+                }
                 card.appendChild(foot);
             }
             dlg.appendChild(card);
@@ -2042,7 +2144,16 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function mount() {
-            if (root) return;
+            if (root && root.isConnected) return;
+            if (root && !root.isConnected) {
+                // v1.2.0: YouTube or another extension detached the deck —
+                // reset the cached references so a full re-mount rebuilds the
+                // element registry instead of writing into a dead tree
+                // forever (v1.1.0 could never recover from removal).
+                root = null;
+                shadow = null;
+                for (const key of Object.keys(elx)) delete elx[key];
+            }
             root = document.createElement('div');
             root.id = 'ytpu-deck';
             root.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:2147483646;';
@@ -2089,10 +2200,10 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                     DOMU.el('button', { class: 'btn', id: 'selall' }, { textContent: 'Select all' }, {}, { click: () => DOMADAPTER.selectAll() }),
                     DOMU.el('button', { class: 'btn', id: 'clear' }, { textContent: 'Clear' }, {}, { click: () => DOMADAPTER.clearSelection() }),
                     DOMU.el('button', { class: 'btn primary', id: 'copy' }, { textContent: 'Copy to…' }, {}, {
-                        click: () => withLock(() => showDestPicker('copy', (picks, sel) => MANAGER.runBulkOp('copy', picks, sel))),
+                        click: () => showDestPicker('copy', (picks, sel) => withLock(() => MANAGER.runBulkOp('copy', picks, sel))),
                     }),
                     DOMU.el('button', { class: 'btn primary', id: 'move' }, { textContent: 'Move to…' }, {}, {
-                        click: () => withLock(() => showDestPicker('move', (picks, sel) => MANAGER.runBulkOp('move', picks, sel))),
+                        click: () => showDestPicker('move', (picks, sel) => withLock(() => MANAGER.runBulkOp('move', picks, sel))),
                     }),
                     DOMU.el('button', { class: 'btn danger span2', id: 'delBtn' }, { textContent: 'Delete from this playlist' }, {}, {
                         click: () => withLock(() => MANAGER.doDelete()),
@@ -2117,7 +2228,17 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                     DOMU.el('button', { class: 'btn span2', id: 'plaintext' }, { textContent: 'Export as plaintext…' }, {}, {
                         click: () => withLock(() => EXPORTER.openPlaintextDialog()),
                     }),
+                    DOMU.el('button', { class: 'btn span2', id: 'dupes' }, { textContent: 'Find duplicates' }, {}, {
+                        click: () => MANAGER.doDupes(),
+                    }),
                 ]),
+                DOMU.el('input', {
+                    type: 'text', id: 'rowFilter', class: 'dest-manual',
+                    placeholder: 'Filter rows by title…',
+                    style: 'width:100%;box-sizing:border-box;margin-top:6px;',
+                }, {}, {}, {
+                    input: (e) => DOMADAPTER.setFilter(e.target.value),
+                }),
             ]);
 
             // Sort section
@@ -2182,7 +2303,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
             const destpicker = DOMU.el('div', { class: 'destpicker', id: 'destpicker', style: 'display:none;' });
             const log = DOMU.el('div', { class: 'log', id: 'log' });
-            const hint = DOMU.el('div', { class: 'hint' }, { textContent: `Ψ v${CFG.SCRIPT_VERSION} · GOLDEN-UNIT SUPERSET` });
+            const hint = DOMU.el('div', { class: 'hint' }, { textContent: `Ψ v${CFG.SCRIPT_VERSION} · Alt+Shift+U/S/X · GOLDEN-UNIT SUPERSET` });
 
             panel.appendChild(badge);
             badge.appendChild(badgeCount);
@@ -2208,7 +2329,8 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 delBtn: secManager.querySelector('#delBtn'), export: secManager.querySelector('#export'),
                 importLbl: secManager.querySelector('#importLbl'), importfile: secManager.querySelector('#importfile'),
                 snapshot: secManager.querySelector('#snapshot'), check: secManager.querySelector('#check'),
-                plaintext: secManager.querySelector('#plaintext'),
+                plaintext: secManager.querySelector('#plaintext'), dupes: secManager.querySelector('#dupes'),
+                rowFilter: secManager.querySelector('#rowFilter'),
                 sortGo: secSort.querySelector('#sortGo'), sortStop: secSort.querySelector('#sortStop'),
                 sortMode: secSort.querySelector('#sortMode'), sortScroll: secSort.querySelector('#sortScroll'),
                 sortRetry: secSort.querySelector('#sortRetry'),
@@ -2221,19 +2343,59 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             elx.sortMode.value = STORE.data().sort.mode;
             elx.sortScroll.value = STORE.data().sort.autoScroll ? 'all' : 'loaded';
 
-            DOMADAPTER.onSelectionChange((sel) => {
-                elx.count.textContent = sel.size ? `${sel.size} selected` : '';
-                setBadgeCount(sel.size);
-            });
+            if (!selectionWired) {
+                // v1.2.0: register exactly once across re-mounts (the adapter
+                // keeps a listener set — re-mounting must not stack copies).
+                selectionWired = true;
+                DOMADAPTER.onSelectionChange((sel) => {
+                    if (elx.count) elx.count.textContent = sel.size ? `${sel.size} selected` : '';
+                    setBadgeCount(sel.size);
+                });
+            }
 
             refreshAccount();
             renderLog();
             LOG.info(`mounted · v${CFG.SCRIPT_VERSION}`);
         }
 
+        // ---- v1.2.0: hotkey + failsafe entry points ----
+
+        /** Hotkey path (Alt+Shift+U): recover first, then expand/collapse. */
+        function toggleFromHotkey() {
+            try {
+                if (!root || !root.isConnected) mount();
+                if (!root || !elx.panel) return;
+                if (root.style.display === 'none') {
+                    // Route rules are hiding the deck — an explicit hotkey
+                    // press overrides them for this page view.
+                    root.style.display = '';
+                    if (elx.panel.classList.contains('collapsed')) toggleExpand();
+                } else {
+                    toggleExpand();
+                }
+            } catch (e) { LOG.error('hotkey toggle failed:', e); }
+        }
+
+        /** Failsafe (menu command / Alt+Shift+X): force a sane mounted,
+         *  visible, on-top deck no matter what removed or hid it. */
+        function rescue() {
+            try {
+                if (!root || !root.isConnected) mount();
+                if (!root) return;
+                root.style.display = '';
+                root.style.setProperty('position', 'fixed', 'important');
+                root.style.setProperty('right', '16px', 'important');
+                root.style.setProperty('bottom', '16px', 'important');
+                root.style.setProperty('z-index', '2147483646', 'important');
+                if (elx.panel && elx.panel.classList.contains('collapsed')) toggleExpand();
+                logMsg('Deck force-restored (menu failsafe / Alt+Shift+X)', 'ok');
+            } catch (e) { LOG.error('deck rescue failed:', e); }
+        }
+
         return {
             mount, logMsg, setProgress, withLock, showDestPicker, parsePlaylistId, modal,
             updateVisibility, refreshAccount, setActionsDisabled, elx,
+            toggleFromHotkey, rescue,
             get ownedPlaylists() { return ownedPlaylists; },
             setOwned(list, tag) { ownedPlaylists = list; ownedTag = tag; },
             addOwned(entry) { ownedPlaylists.push(entry); },
@@ -2292,6 +2454,15 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             body.appendChild(toggleRow('Show spacer before channel buttons',
                 () => d().appearance.spacerVisible,
                 (v) => { STORE.patch({ appearance: { spacerVisible: v } }); BUS.emit('reset'); }));
+            body.appendChild(toggleRow('Ψ deck on all pages (off = playlist & subscriptions only)',
+                () => d().appearance.deckEverywhere !== false,
+                (v) => {
+                    STORE.patch({ appearance: { deckEverywhere: v } });
+                    DECK.updateVisibility(NAV.classify());
+                }));
+            body.appendChild(toggleRow('Global hotkeys — Alt+Shift+U deck · Alt+Shift+S settings · Alt+Shift+X rescue',
+                () => (d().hotkeys ? d().hotkeys.enabled !== false : true),
+                (v) => STORE.patch({ hotkeys: { enabled: v } }))); // live: HOTKEYS reads the flag on every keydown
 
             body.appendChild(group('Channel pages').node);
             body.appendChild(simple('Playlist buttons (All / Popular / Shorts / Streams…)',
@@ -2318,6 +2489,8 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             body.appendChild(group('Playlist pages').node);
             body.appendChild(toggleRow('Bulk manager (select / copy / move / delete / import)',
                 () => d().manager.enabled, (v) => { STORE.patch({ manager: { enabled: v } }); BUS.emit('reset'); }));
+            body.appendChild(toggleRow('Export tools (three-dot entry + plaintext dialog)',
+                () => d().exporter.enabled, (v) => { STORE.patch({ exporter: { enabled: v } }); BUS.emit('reset'); }));
             body.appendChild(toggleRow('Sort by duration',
                 () => d().sort.enabled, (v) => { STORE.patch({ sort: { enabled: v } }); BUS.emit('reset'); }));
             body.appendChild(toggleRow('Show date posted & view count',
@@ -2364,6 +2537,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         let lastChannelId = null;
         let observer = null;
         let randomPopover = null;
+        let popoverCloser = null;
 
         // &playnext=1 for everything
         // when playNext is on (never for Members-Only), always for Popular.
@@ -2536,12 +2710,17 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                         randomPopover.style.top = `${rect.bottom + 4}px`;
                         randomPopover.style.left = `${rect.right}px`;
                         randomPopover.removeAttribute('hidden');
+                        // v1.1.0: drop any previous capture listener instead of
+                        // stacking one per open (v1.0.0 accumulated them).
+                        if (popoverCloser) document.removeEventListener('click', popoverCloser, true);
                         const close = (ev) => {
                             if (randomPopover && !randomPopover.contains(ev.target) && ev.target !== e.currentTarget) {
                                 randomPopover.setAttribute('hidden', '');
                                 document.removeEventListener('click', close, true);
+                                if (popoverCloser === close) popoverCloser = null;
                             }
                         };
+                        popoverCloser = close;
                         document.addEventListener('click', close, true);
                     },
                 });
@@ -2627,46 +2806,59 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function addLink() {
+            if (!STORE.data().membersTab.enabled) return;
             const tabTagName = 'yt-tab-shape';
             const anchorSelector = `${tabTagName}:nth-last-of-type(2)`;
             const anchorElement = document.querySelector(anchorSelector);
             if (anchorElement === null) return;
+            const tabs = document.querySelectorAll(tabTagName);
+            if (!tabs.length) return; // v1.1.0: tab strip raced empty — retry via observers
             try { anchorElement.parentNode.removeChild(button); } catch (e) { /* first run: nothing to remove */ }
 
-            const newNode = document.querySelectorAll(tabTagName)[0].cloneNode(true);
+            const newNode = tabs[0].cloneNode(true);
             newNode.removeAttribute('aria-selected');
             newNode.setAttribute('tab-identifier', 'TAB_ID_SPONSORSHIP_PLAYLIST');
-            newNode.childNodes[0].textContent = displayText();
+            const labelNode = newNode.childNodes[0];
+            if (labelNode) labelNode.textContent = displayText();
 
             anchorElement.parentNode.insertBefore(button || newNode, anchorElement);
 
             if (!button) {
                 button = document.querySelector(`${tabTagName}:nth-last-of-type(3)`);
-                button.addEventListener('click', async () => {
-                    if (!chId) {
-                        const meta = document.querySelector('[itemprop="identifier"]');
-                        chId = meta ? meta.getAttribute('content') : null;
-                    }
-                    if (!chId) chId = await CHANNEL.resolve();
-                    if (!chId) { LOG.warn('Members-only: channel id unavailable'); return; }
-                    const targetURL = `${location.protocol}//${location.host}/playlist?list=${chId.replace(/^UC/, 'UUMO')}`;
-                    window.open(targetURL, '_blank', 'noopener');
-                });
+                if (button) {
+                    button.addEventListener('click', async () => {
+                        if (!chId) {
+                            const meta = document.querySelector('[itemprop="identifier"]');
+                            chId = meta ? meta.getAttribute('content') : null;
+                        }
+                        if (!chId) chId = await CHANNEL.resolve();
+                        if (!chId) { LOG.warn('Members-only: channel id unavailable'); return; }
+                        const targetURL = `${location.protocol}//${location.host}/playlist?list=${chId.replace(/^UC/, 'UUMO')}`;
+                        window.open(targetURL, '_blank', 'noopener');
+                    });
+                }
             }
         }
 
-        function start() {
+        function arm() {
             if (!STORE.data().membersTab.enabled) return;
-            const route = NAV.classify();
-            if (!route.isChannel) return;
-            // Anchor wait (bounded), then dynamic re-add via a filtered observer.
             DOMU.waitForElement('yt-tab-shape:nth-last-of-type(2)', { timeout: CFG.WAIT_ELEMENT_TIMEOUT_MS })
                 .then((found) => { if (found) addLink(); });
+        }
+
+        function start() {
+            // Dynamic re-add via a filtered observer (registered once).
             DOMU.onParentChildSelectors({
                 parentSelector: '.tabGroupShapeTabs',
                 childSelector: 'yt-tab-shape',
                 inserted: () => addLink(),
             });
+            // v1.1.0: re-arm on SPA entry into channel pages so the tab
+            // appears without a hard reload; addLink() live-checks the flag.
+            NAV.onRoute((route) => {
+                if (route.isChannel && route.reason !== 'navigate-start') arm();
+            });
+            if (NAV.classify().isChannel) arm();
         }
 
         return { start };
@@ -2811,8 +3003,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         function getVidNum() {
             // "32 / 152" -> ["32", "152"]
-            const app = ytdApp();
-            const mini = app && (app.hasAttribute('miniplayer-active') || app.hasAttribute('miniplayer-active_'));
+            const mini = isMiniplayerActive(); // v1.1.0: single source of truth
             let node = mini ? document.querySelector(selectors.playlistVideosMiniplayer) : document.querySelector(selectors.playlistVideos);
             if (!node || !node.textContent) return ['1', '1'];
             return node.textContent.trim().split(' / ');
@@ -2824,8 +3015,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function getPreviousAnchor() {
-            const app = ytdApp();
-            const mini = app && (app.hasAttribute('miniplayer-active') || app.hasAttribute('miniplayer-active_'));
+            const mini = isMiniplayerActive(); // v1.1.0: single source of truth
             const scope = mini ? document.querySelector(selectors.miniplayerDiv) : document.querySelector('#content');
             if (!scope) return null;
             let elem = scope.querySelector(selectors.playlistCurrentVideo)?.previousElementSibling || null;
@@ -2843,18 +3033,23 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function start() {
-            if (!STORE.data().reverseOrder.enabled) return;
+            // v1.1.0: no boot-time early return — every path live-checks the
+            // enabled flag so toggling Settings takes effect without reload.
             NAV.onRoute((route) => {
-                if (route.isWatchWithList) {
+                if (route.isWatchWithList && STORE.data().reverseOrder.enabled) {
                     addButton();
                     ensurePlayerListeners();
                     ensureStatsObserver();
                 }
             });
             BUS.on('reset', () => updateButtonState());
-            // Failsafe re-add loop while watching a playlist.
+            // Failsafe re-add loop while watching a playlist (self-guarding:
+            // classify() is cheap and the flag check short-circuits first).
             setInterval(() => {
-                if (NAV.classify().isWatchWithList) { addButton(); ensurePlayerListeners(); }
+                if (STORE.data().reverseOrder.enabled && NAV.classify().isWatchWithList) {
+                    addButton();
+                    ensurePlayerListeners();
+                }
             }, 2500);
         }
 
@@ -3006,7 +3201,8 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function start() {
-            if (!STORE.data().autoplay.enabled) return;
+            // v1.1.0: no boot-time early return — scanAndSetup live-checks the
+            // enabled flag, so Settings toggles take effect without reload.
             document.addEventListener('yt-navigate-start', onNavigateStart, false);
             document.addEventListener('yt-navigate-cache', () => { navigateStatus = 1; }, false);
             document.addEventListener('yt-navigate-finish', onNavigateFinish, false);
@@ -3090,8 +3286,10 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
             for (let j = 0; j < allDragPoints.length; j++) {
                 const thumb = allAnchors[j];
-                const timeSpan = thumb.querySelector('#text');
-                const timeDigits = timeSpan.innerText.trim().split(':').reverse();
+                // v1.1.0: a mid-list row can lack #text (premiere/upcoming or
+                // render race) — v1.0.0 crashed on null.innerText there.
+                const rawStamp = thumb.querySelector('#text')?.innerText?.trim() || '';
+                const timeDigits = rawStamp.split(':').reverse();
                 let time;
                 if (timeDigits.length === 1) {
                     // No timestamp (upcoming / not-yet-premiered): sort to the
@@ -3128,7 +3326,10 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
             const reportedEl = document.querySelector('.metadata-stats span.yt-formatted-string:first-of-type');
             if (!reportedEl) { DECK.logMsg('Playlist metadata not found — is this an editable playlist?', 'warn'); return; }
-            const reportedVideoCount = Number(reportedEl.innerText);
+            // v1.1.0: digit extraction — localized text ("1,234 videos" /
+            // "1.234 Videos") made plain Number() NaN in v1.0.0, forcing
+            // phantom scroll retries against a count that never matched.
+            const reportedVideoCount = parseInt((reportedEl.innerText.match(/\d/g) || []).join(''), 10) || 0;
 
             let allDragPoints = document.querySelectorAll('ytd-item-section-renderer:first-of-type yt-icon#reorder');
             let allAnchors;
@@ -3227,10 +3428,17 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             const popup = DECK.modal('Ψ EXPORT — SCROLLING', (body) => {
                 body.appendChild(DOMU.el('div', { class: 'log-info' }, { textContent: 'Scrolling to load all videos in the playlist. Please wait...' }));
             });
-            while (document.querySelector('ytd-continuation-item-renderer.ytd-playlist-video-list-renderer')) {
+            // v1.1.0: attempt ceiling — v1.0.0 could spin forever if YouTube
+            // kept a continuation marker mounted (GUP B.1 bounded polling).
+            const MAX_SCROLLS = 400;
+            let scrolls = 0;
+            while (document.querySelector('ytd-continuation-item-renderer.ytd-playlist-video-list-renderer')
+                && scrolls < MAX_SCROLLS) {
                 window.scrollTo(0, document.documentElement.scrollHeight || document.body.scrollHeight);
                 await new Promise((r) => setTimeout(r, 100));
+                scrolls++;
             }
+            if (scrolls >= MAX_SCROLLS) LOG.warn(`DOM fallback scroll ceiling hit (${MAX_SCROLLS}) — exporting the loaded portion`);
             popup.close();
             const items = [];
             for (const row of document.querySelectorAll('ytd-playlist-video-list-renderer > #contents > ytd-playlist-video-renderer #content')) {
@@ -3310,7 +3518,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 if (text) out.value = text;
             };
             const dlg = DECK.modal('Ψ EXPORT PLAYLIST — PLAINTEXT', buildOptions, [
-                DOMU.el('button', { class: 'btn primary' }, { textContent: 'Get list' }, {}, {
+                DOMU.el('button', { class: 'btn primary', 'data-keep-open': '' }, { textContent: 'Get list' }, {}, {
                     click: async () => {
                         const btn = dlg.element.querySelector('.modal-foot .btn.primary');
                         if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
@@ -3328,7 +3536,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                         }
                     },
                 }),
-                DOMU.el('button', { class: 'btn' }, { textContent: 'Copy' }, {}, {
+                DOMU.el('button', { class: 'btn', 'data-keep-open': '' }, { textContent: 'Copy' }, {}, {
                     click: async () => {
                         const out = dlg.element.querySelector('#ytpuOut');
                         if (!out || !out.value) { DECK.logMsg('Nothing to copy yet', 'warn'); return; }
@@ -3336,7 +3544,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                         DECK.logMsg(ok ? 'Copied to clipboard' : 'Copy failed', ok ? 'ok' : 'err');
                     },
                 }),
-                DOMU.el('button', { class: 'btn' }, { textContent: 'Download .txt' }, {}, {
+                DOMU.el('button', { class: 'btn', 'data-keep-open': '' }, { textContent: 'Download .txt' }, {}, {
                     click: () => {
                         if (!text) { DECK.logMsg('Nothing to download yet', 'warn'); return; }
                         const id = DOMADAPTER.currentPlaylistId() || 'playlist';
@@ -3426,7 +3634,8 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function start() {
-            if (!STORE.data().exporter.enabled) return;
+            // v1.1.0: no boot-time early return — injectMenuEntry live-checks
+            // the exporter flag, so the three-dot entry follows Settings live.
             // Menu entry is injected whenever YouTube opens a dropdown on a playlist page.
             DOMU.observeDocument(injectMenuEntry, 300);
         }
@@ -3690,12 +3899,83 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             }
         }
 
+        /** v1.1.0 — Duplicate finder: groups the current playlist's items by
+         *  videoId, lists every video appearing more than once, and offers a
+         *  keep-first purge that removes the extra setVideoIds through the
+         *  verified mutator. Read-only until the user explicitly confirms. */
+        async function doDupes() {
+            const id = DOMADAPTER.currentPlaylistId();
+            if (!id) { DECK.logMsg('Not on a playlist page', 'warn'); return; }
+            DECK.logMsg('Scanning for duplicates…');
+            let items;
+            try {
+                const res = await EXPORTER.loadItems();
+                items = res.items;
+            } catch (e) {
+                DECK.logMsg(`Duplicate scan failed: ${e && e.message}`, 'err');
+                return;
+            }
+            const groups = new Map();
+            for (const it of items) {
+                if (!it.videoId) continue;
+                if (!groups.has(it.videoId)) groups.set(it.videoId, []);
+                groups.get(it.videoId).push(it);
+            }
+            const dupes = [...groups.entries()].filter(([, list]) => list.length > 1);
+            const extraCount = dupes.reduce((n, [, list]) => n + list.length - 1, 0);
+            if (!dupes.length) {
+                DECK.logMsg('No duplicate videos found — every entry is unique.', 'ok');
+                return;
+            }
+            DECK.logMsg(`Found ${dupes.length} duplicated video${dupes.length === 1 ? '' : 's'} (${extraCount} extra cop${extraCount === 1 ? 'y' : 'ies'})`, 'warn');
+            const li = (it, copy) => DOMU.el('li', {}, {}, {}, {}, [
+                DOMU.el('span', { class: 'tag' }, { textContent: `×${copy}` }),
+                DOMU.el('a', { href: `https://www.youtube.com/watch?v=${it.videoId}`, target: '_blank', rel: 'noreferrer' }, { textContent: it.title || it.videoId }),
+            ]);
+            const rows = dupes.map(([vid, list]) => li(list[0], list.length));
+            const removable = dupes.flatMap(([, list]) => list.slice(1).map((it) => it.setVideoId)).filter(Boolean);
+            const m = DECK.modal('Ψ DUPLICATES — KEEP FIRST', (body) => {
+                body.appendChild(DOMU.el('div', { class: 'kv' }, {}, {}, {}, [
+                    document.createTextNode(`${dupes.length} duplicated videos · ${extraCount} extra copies · ${removable.length} removable now`),
+                ]));
+                if (removable.length < extraCount) {
+                    body.appendChild(DOMU.el('div', { class: 'log-warn', style: 'padding:4px 0;' }, {
+                        textContent: 'Some copies lack setVideoIds (read-only or drifted playlist) — they will be skipped.',
+                    }));
+                }
+                body.appendChild(DOMU.el('ul', { class: 'modal-list' }, {}, {}, {}, rows));
+            }, [
+                DOMU.el('button', { class: 'btn' }, { textContent: 'Close' }),
+                DOMU.el('button', { class: 'btn danger', 'data-keep-open': '' }, { textContent: `Remove ${removable.length} extra cop${removable.length === 1 ? 'y' : 'ies'}` }, {}, {
+                    click: SAFETY.safeWrap(() => DECK.withLock(async () => {
+                        if (!removable.length) { DECK.logMsg('Nothing removable — the playlist is read-only for this account.', 'warn'); return; }
+                        if (!confirm(`Remove ${removable.length} duplicate cop${removable.length === 1 ? 'y' : 'ies'} (keeping the first of each)?\nThis cannot be undone.`)) return;
+                        const guard = AUTH.openOpGuard();
+                        try {
+                            guard.check();
+                            DECK.logMsg(`Purging ${removable.length} duplicates…`);
+                            const r = await MUTATOR.removeVideos(id, removable, (p) => {
+                                DECK.setProgress(p.applied / removable.length);
+                            });
+                            DECK.logMsg(`- removed ${r.applied}, failed ${r.failed.length}`, r.failed.length ? 'warn' : 'ok');
+                            DOMADAPTER.clearSelection();
+                            DECK.setProgress(0);
+                            m.close();
+                        } catch (e) {
+                            DECK.logMsg(`Duplicate purge error: ${e && e.message}`, 'err');
+                        }
+                    })),
+                }),
+            ]);
+        }
+
         function start() {
-            if (!STORE.data().manager.enabled) return;
+            // v1.1.0: the DOM adapter always runs; injectCheckboxes/selectAll
+            // live-check the manager flag so Settings toggles need no reload.
             DOMADAPTER.start();
         }
 
-        return { runBulkOp, doDelete, doExport, doImport, resolveSetVideoIds, start };
+        return { runBulkOp, doDelete, doExport, doImport, doDupes, resolveSetVideoIds, start };
     })();
 
     // ╔══════════════════════════════════════════════════════════════════╗
@@ -3775,7 +4055,8 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function start() {
-            if (!STORE.data().quickPlaylist.enabled) return;
+            // v1.1.0: no boot-time early return — injectButtons live-checks the
+            // quickPlaylist flag so Settings toggles need no reload.
             observer = DOMU.observeDocument(injectButtons, CFG.OBSERVER_DEBOUNCE_MS);
             NAV.onRoute((route) => {
                 if (route.isSubscriptions) setTimeout(injectButtons, 400);
@@ -4068,7 +4349,8 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function start() {
-            if (!STORE.data().playlistClose.enabled) return;
+            // v1.1.0: no boot-time early return — the observer callback
+            // live-checks the playlistClose flag so Settings toggles need no reload.
             const observer = new MutationObserver(() => {
                 if (!STORE.data().playlistClose.enabled) return;
                 if (document.contains(button)) return;
@@ -4090,6 +4372,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
     const METAINFO = (() => {
         function handleVideoInList(rowEl) {
+            if (!STORE.data().metaInfo.enabled) return; // v1.1.0: live toggle
             const titleEl = rowEl.querySelector('#video-title.ytd-playlist-video-renderer[aria-label]');
             if (!titleEl) return;
             const hiddenData = titleEl.getAttribute('aria-label');
@@ -4123,7 +4406,8 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function start() {
-            if (!STORE.data().metaInfo.enabled) return;
+            // v1.1.0: no boot-time early return — handleVideoInList live-checks
+            // the metaInfo flag so Settings toggles need no reload.
             DOMU.onParentChildSelectors({
                 parentSelector: 'ytd-playlist-video-list-renderer #contents',
                 childSelector: 'ytd-playlist-video-renderer',
@@ -4143,13 +4427,14 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
     const EPISODE = (() => {
         function expand() {
+            if (!STORE.data().episodeExpand.enabled) return; // v1.1.0: live toggle
             const chapterTitle = document.querySelector('.ytp-chapter-title');
             // Null-guarded: upstream threw on chapter-less videos.
             if (chapterTitle && typeof chapterTitle.click === 'function') chapterTitle.click();
         }
 
         function start() {
-            if (!STORE.data().episodeExpand.enabled) return;
+            // v1.1.0: no boot-time early return — expand live-checks the flag.
             window.addEventListener('load', () => setTimeout(expand, 0));
             window.addEventListener('yt-page-data-updated', () => setTimeout(expand, 400));
             window.addEventListener('yt-navigate-finish', () => setTimeout(expand, 600));
@@ -4398,6 +4683,10 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             const container = getPlaylistContainer();
             if (container === null) return;
             if (container.hasAttribute('ytpa-random')) return;
+            // v1.1.0: a fresh container means a new session — retire the
+            // previous session's timers and keydown hook instead of stacking
+            // them across SPA navigations (v1.0.0 accumulated both).
+            if (activeShutdown) { activeShutdown(); activeShutdown = null; }
             container.setAttribute('ytpa-random', 'applied');
 
             container.querySelector('#items').insertAdjacentElement('beforebegin', DOMU.el('div', { class: 'ytpu-random-notice' }, {}, {}, {}, [
@@ -4406,11 +4695,29 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 document.createTextNode(' listed here.'),
             ]));
 
+            // v1.1.0: every interval is tracked so shutdown can reclaim all of
+            // them — v1.0.0 leaked updateStorage + badge timers forever after
+            // the user exited random mode (GUP D4 ruthless reclamation).
+            const ownedIntervals = new Set();
+            const ownInterval = (fn, ms) => {
+                const id = setInterval(fn, ms);
+                ownedIntervals.add(id);
+                return id;
+            };
+            const shutdown = () => {
+                for (const id of ownedIntervals) clearInterval(id);
+                ownedIntervals.clear();
+                document.removeEventListener('keydown', onKey, true);
+                const notice = container.querySelector('.ytpu-random-notice');
+                if (notice) notice.remove();
+            };
+
             updateStorage();
-            setInterval(SAFETY.safeWrap(updateStorage), 1000);
+            ownInterval(SAFETY.safeWrap(updateStorage), 1000);
 
             // YouTube keeps erasing the exit badge — keep re-adding it.
-            setInterval(() => {
+            ownInterval(() => {
+                if (!container.isConnected) { shutdown(); return; }
                 if (container.querySelector('.ytpu-badge')) return;
                 const header = container.querySelector('h3 a');
                 if (!header) return;
@@ -4434,7 +4741,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 playNextRandom();
             }
 
-            document.addEventListener('keydown', (event) => {
+            const onKey = (event) => {
                 // SHIFT + N (upstream parity)
                 if (event.shiftKey && event.key.toLowerCase() === 'n') {
                     event.stopImmediatePropagation();
@@ -4443,12 +4750,17 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                     markWatched(videoId);
                     playNextRandom(true); // reload — YouTube otherwise forces the next in line
                 }
-            }, true);
+            };
+            document.addEventListener('keydown', onKey, true);
+            activeShutdown = shutdown;
 
             const tick = () => {
                 const paramsNow = new URLSearchParams(location.search);
                 if (!paramsNow.has('ytpa-random') || location.pathname !== '/watch') {
                     clearInterval(tickInterval); // random mode exited — reclaim (GUP D4)
+                    shutdown(); // v1.1.0: also reclaim the storage/badge timers, keydown hook + notice
+                    container.removeAttribute('ytpa-random');
+                    if (activeShutdown === shutdown) activeShutdown = null;
                     return;
                 }
                 const videoId = PLAYER.getVideoId(location.href);
@@ -4487,6 +4799,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         let mode = 'random';
         let initial = null;
+        let activeShutdown = null; // v1.1.0: retire the previous random session on SPA re-entry
 
         function start() {
             if (ENV.isMobile()) return; // random play is desktop-only
@@ -4567,6 +4880,60 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             refresh(NAV.classify());
         }
 
+        // v1.2.0: set is exposed so BOOT can register the failsafe rescue
+        // command BEFORE any feature starts (remove stays internal — it has
+        // no external consumer; zero dead code).
+        return { start, set };
+    })();
+
+    // ╔══════════════════════════════════════════════════════════════════╗
+    // ║ §35A HOTKEYS — global keyboard shortcuts (v1.2.0)               ║
+    // ╚══════════════════════════════════════════════════════════════════╝
+
+    const HOTKEYS = (() => {
+        // Alt+Shift+<letter> sits outside YouTube's own shortcut map (which
+        // uses bare letters and Shift+<letter>), so nothing here shadows the
+        // player, the playlist panel or YouTube's keyboard help overlay.
+        const COMBOS = {
+            'Alt+Shift+U': { action: 'toggleDeck', label: 'Toggle the Ψ deck panel' },
+            'Alt+Shift+S': { action: 'openSettings', label: 'Open Settings' },
+            'Alt+Shift+X': { action: 'rescueDeck', label: 'Force re-show the Ψ deck' },
+        };
+
+        function comboOf(event) {
+            if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey) return null;
+            if (!event.key || event.key.length !== 1) return null;
+            return `Alt+Shift+${event.key.toUpperCase()}`;
+        }
+
+        function isTyping(event) {
+            const t = event.target;
+            if (!t || !t.tagName) return false;
+            const tag = t.tagName.toLowerCase();
+            return tag === 'input' || tag === 'textarea' || tag === 'select' || t.isContentEditable === true;
+        }
+
+        function onKeydown(event) {
+            if (event.repeat || isTyping(event)) return;
+            const settings = STORE.data();
+            if (!settings.hotkeys || settings.hotkeys.enabled === false) return; // live setting
+            const combo = comboOf(event);
+            const binding = combo ? COMBOS[combo] : null;
+            if (!binding) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            LOG.info(`hotkey ${combo} — ${binding.label}`);
+            try {
+                if (binding.action === 'toggleDeck') DECK.toggleFromHotkey();
+                else if (binding.action === 'openSettings') SETTINGS.show();
+                else if (binding.action === 'rescueDeck') DECK.rescue();
+            } catch (e) { LOG.error(`hotkey ${combo} failed:`, e); }
+        }
+
+        function start() {
+            document.addEventListener('keydown', onKeydown, true);
+        }
+
         return { start };
     })();
 
@@ -4575,7 +4942,8 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
     // ╚══════════════════════════════════════════════════════════════════╝
 
     const BOOT = (() => {
-        let booted = false;
+        let started = false;
+        let watchdogId = null;
 
         function greet() {
             // One branded line per page load (YTPA Greeter, miniaturized).
@@ -4596,65 +4964,105 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             }
         }
 
-        function startAllFeatures() {
-            THEME.apply();
-            CHBTNS.start();
-            MEMBERSTAB.start();
-            REVERSE.start();
-            AUTOPLAY.start();
-            SORTER.start();
-            EXPORTER.start();
-            MANAGER.start();
-            QUICK.start();
-            QUEUE.start();
-            CLOSE.start();
-            METAINFO.start();
-            EPISODE.start();
-            HUGE.start();
-            RANDOM.start();
-            MENU.start();
-        }
+        // v1.2.0: fault isolation. v1.1.0 wrapped the whole start chain in a
+        // single try/catch, so one throwing feature silently killed every
+        // feature after it. Each start now runs in its own isolation cell and
+        // reports its own failure.
+        const FEATURES = [
+            ['THEME', () => THEME.apply()],
+            ['CHBTNS', () => CHBTNS.start()],
+            ['MEMBERSTAB', () => MEMBERSTAB.start()],
+            ['REVERSE', () => REVERSE.start()],
+            ['AUTOPLAY', () => AUTOPLAY.start()],
+            ['SORTER', () => SORTER.start()],
+            ['EXPORTER', () => EXPORTER.start()],
+            ['MANAGER', () => MANAGER.start()],
+            ['QUICK', () => QUICK.start()],
+            ['QUEUE', () => QUEUE.start()],
+            ['CLOSE', () => CLOSE.start()],
+            ['METAINFO', () => METAINFO.start()],
+            ['EPISODE', () => EPISODE.start()],
+            ['HUGE', () => HUGE.start()],
+            ['RANDOM', () => RANDOM.start()],
+            ['MENU', () => MENU.start()],
+            ['HOTKEYS', () => HOTKEYS.start()],
+        ];
 
-        function initialize() {
-            try {
-                greet();
-                DECK.mount();
-                startAllFeatures();
-                NAV.onRoute((route) => {
-                    if (DECK.root) DECK.updateVisibility(route);
-                });
-                DECK.updateVisibility(NAV.classify());
-                NAV.start();
-            } catch (e) {
-                LOG.error('boot failed:', e);
+        function startAllFeatures() {
+            for (const [name, start] of FEATURES) {
+                try { start(); } catch (e) { LOG.error(`${name}.start failed:`, e); }
             }
         }
 
-        /** Returns true when boot completed (possibly degraded). */
-        function boot() {
-            if (booted) return true;
-            if (!ENV.pageWin.ytcfg) return false; // wait — PlaylistPlus boot pattern
-            booted = true;
-            initialize();
-            return true;
+        function pageContextReady() {
+            try { return !!(ENV.pageWin.ytcfg && typeof ENV.pageWin.ytcfg.get === 'function'); }
+            catch (e) { return false; }
         }
 
-        let tries = 0;
+        /** v1.2.0: ytcfg availability is STATUS, not a boot gate. The deck is
+         *  already mounted; this only flips the deck log to "online" the
+         *  moment the InnerTube context appears. Bounded poll (120 × 1 s,
+         *  GUP B.1) — v1.1.0 instead blocked ALL UI on this condition for
+         *  100 s and then booted "degraded". */
+        function trackPageContext() {
+            if (pageContextReady()) return;
+            DECK.logMsg('YouTube API not visible yet — manager/export come online automatically', 'warn');
+            console.warn('[Ψ Playlist Unity] window.ytcfg is not yet visible from this userscript manager. The deck is fully mounted; API-backed features (bulk manager, snapshots, quick playlists) will activate automatically when the context appears.');
+            let tries = 0;
+            const poll = setInterval(() => {
+                tries += 1;
+                if (pageContextReady()) {
+                    clearInterval(poll);
+                    DECK.logMsg('YouTube API online — all features available', 'ok');
+                } else if (tries >= 120) {
+                    clearInterval(poll);
+                    DECK.logMsg('YouTube API never became visible — API features stay offline (deck unaffected)', 'err');
+                }
+            }, 1000);
+        }
+
+        /** v1.2.0: if YouTube's DOM churn (or another extension) detaches the
+         *  deck, re-mount it automatically. Bounded work per tick; lifetime
+         *  interval of the same class as NAV's mobile poll. */
+        function armWatchdog() {
+            if (watchdogId !== null) return;
+            watchdogId = setInterval(() => {
+                try {
+                    if (!DECK.root || !DECK.root.isConnected) {
+                        DECK.mount();
+                        DECK.updateVisibility(NAV.classify());
+                        DECK.logMsg('Deck was detached — automatically re-mounted', 'warn');
+                    }
+                } catch (e) { LOG.debug('watchdog re-mount failed:', e && e.message); }
+            }, 5000);
+        }
+
+        function initialize() {
+            // Failsafe first (v1.2.0): the manager-menu rescue command must
+            // exist even if every later step throws.
+            try { MENU.set('rescue', 'Ψ Force show deck (Alt+Shift+X)', () => DECK.rescue()); }
+            catch (e) { LOG.debug('rescue menu command failed:', e && e.message); }
+            try { greet(); } catch (e) { LOG.debug('greet failed:', e && e.message); }
+            try { DECK.mount(); } catch (e) { LOG.error('deck mount failed:', e); }
+            try { startAllFeatures(); } catch (e) { LOG.error('feature start failed:', e); }
+            try {
+                NAV.onRoute((route) => { if (DECK.root) DECK.updateVisibility(route); });
+                DECK.updateVisibility(NAV.classify());
+                NAV.start();
+            } catch (e) { LOG.error('navigation wiring failed:', e); }
+            try { trackPageContext(); } catch (e) { LOG.debug('page-context tracking failed:', e && e.message); }
+            try { armWatchdog(); } catch (e) { LOG.debug('watchdog arming failed:', e && e.message); }
+        }
+
+        /** v1.2.0: mount immediately — no ytcfg gate. v1.0.0/v1.1.0 refused
+         *  to mount any UI until unsafeWindow.ytcfg appeared, which never
+         *  happens in some manager sandboxes; users saw nothing for 100
+         *  seconds and then a "degraded" boot. The UI never depends on page
+         *  JS; API-backed features degrade on their own. */
         function start() {
-            if (boot()) return;
-            const waiter = setInterval(() => {
-                tries++;
-                if (tries % 25 === 0) {
-                    console.warn(`[Ψ Playlist Unity] still waiting for window.ytcfg (tries=${tries}). If this never resolves, the userscript manager is isolating the page context.`);
-                }
-                if (boot()) { clearInterval(waiter); return; }
-                if (tries > 500) {
-                    clearInterval(waiter);
-                    console.error('[Ψ Playlist Unity] gave up waiting for ytcfg — page-context features (InnerTube, manager) will be unavailable.');
-                    booted = true;
-                    initialize();
-                }
-            }, 200);
+            if (started) return;
+            started = true;
+            initialize();
         }
 
         return { start };
