@@ -1,12 +1,24 @@
-22:59:32.975 injected.js:1  Failed to load resource: net::ERR_FILE_NOT_FOUND
-In @ injected.js:1
-22:59:33.116 4ndr0tools - Counter-survillance.user.js:531  [4NDR0TOOLS] Initialization complete. Core shielded. 
-22:59:33.286 m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:13022 LegacyDataMixin will be applied to all legacy elements.
+23:16:09.721 4ndr0tools - Counter-survillance.user.js:531  [4NDR0TOOLS] Initialization complete. Core shielded. 
+23:16:10.770 m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:13022 LegacyDataMixin will be applied to all legacy elements.
 Set `_legacyUndefinedCheck: true` on element class to enable.
-22:59:33.599 4ndr0tools - Counter-survillance.user.js:151  [💀] XHR NULLIFIED: //googleads.g.doubleclick.net/pagead/id
-22:59:33.746 VM40:134 Blocked script execution in 'about:blank' because the document's frame is sandboxed and the 'allow-scripts' permission is not set.
-reflect @ VM40:134
-22:59:34.076 4ndr0tools - YouTube Playlist Master.user.js:5201 Ψ PLAYLIST UNITY v1.4.0 · 4NDR0666 · 3lectric-Glass · GUP v5.3 superset
-22:59:34.107 4ndr0tools - YouTube Playlist Master.user.js:239 [Ψ Playlist Unity] mounted · v1.4.0
-22:59:34.440 about:blank:1 Blocked script execution in 'about:blank' because the document's frame is sandboxed and the 'allow-scripts' permission is not set.
-22:59:35.361 @4ever4go:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+23:16:11.048 4ndr0tools - Counter-survillance.user.js:151  [💀] XHR NULLIFIED: //googleads.g.doubleclick.net/pagead/id
+23:16:11.155  Blocked script execution in 'about:blank' because the document's frame is sandboxed and the 'allow-scripts' permission is not set.
+reflect @ unknown
+23:16:11.555 4ndr0tools - YouTube Playlist Master.user.js:5201 Ψ PLAYLIST UNITY v1.4.0 · 4NDR0666 · 3lectric-Glass · GUP v5.3 superset
+23:16:11.581 4ndr0tools - YouTube Playlist Master.user.js:239 [Ψ Playlist Unity] mounted · v1.4.0
+23:16:11.739 about:blank:1 Blocked script execution in 'about:blank' because the document's frame is sandboxed and the 'allow-scripts' permission is not set.
+23:16:12.289 www.google.com/pagead/lvz?evtid=ACd6KtyNeuccJhqKisOGIeRQOLLqYpSQ0-Hs2K35SLRCq7ZB6R_lxcEV_wjGOzUpMY9wJExZhwaQNsEscXfUtpqFC7Sg8_iHIA&req_ts=1790457369&pg=MainAppBootstrap%3AFeed&az=1&sigh=AB9vU42I3_IS6V0rC6O4nhxwpH2UEJcisA:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+23:16:12.472 history:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+23:16:12.890 /generate_204?aRt_xA:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+23:16:13.259 history:1 [GroupMarkerNotSet(crbug.com/242999)!:A0601C00B4090000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader (about:flags#enable-unsafe-swiftshader) flag to opt in to lower security guarantees for trusted content.
+23:16:16.752 VM168:1 WebGPU is experimental on this platform. See https://github.com/gpuweb/gpuweb/wiki/Implementation-Status#implementation-status
+23:16:16.753 VM168:1 Failed to create WebGPU Context Provider
+eval @ VM168:1
+23:16:18.769 4ndr0tools - Counter-survillance.user.js:531  [4NDR0TOOLS] Initialization complete. Core shielded. 
+23:16:19.062 static.doubleclick.net/instream/ad_status.js:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+23:16:19.162 /youtubei/v1/log_event?alt=json:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+23:16:22.584 history:1 The resource https://i.ytimg.com/generate_204 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+23:16:24.379 /youtubei/v1/log_event?alt=json:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+23:16:27.510 history:1 The resource https://i.ytimg.com/generate_204 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+23:16:30.787 history:1 The resource https://i.ytimg.com/generate_204 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+23:16:43.333 history:1 The resource https://i.ytimg.com/generate_204 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
