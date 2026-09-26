@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         4ndr0tools - YouTube Playlist Master
 // @namespace    https://github.com/4ndr0666
-// @version      1.2.0
-// @description  Channel playlist buttons (All / Popular / Videos / Shorts / Streams / Members-only), Random play (prefer newest/oldest), reverse autoplay order, playlist autoplay toggle, duration sort, bulk copy/move/delete, JSON + plaintext export/import, snapshots with deleted-video detection, quick watch_videos playlists, queue & watch-later overlays, playlist close button, date/view metadata, episode auto-expand, huge-playlist browser, live settings (no reload), always-available Ψ deck, playlist row filter, duplicate finder & purge, global hotkeys (Alt+Shift+U/S/X) and failsafe deck rescue.
+// @version      1.3.0
+// @description  Channel playlist buttons (All / Popular / Videos / Shorts / Streams / Members-only), Random play (prefer newest/oldest), reverse autoplay order, playlist autoplay toggle, duration sort, bulk copy/move/delete, JSON + plaintext export/import, snapshots with deleted-video detection, quick watch_videos playlists, queue & watch-later overlays, playlist close button, date/view metadata, episode auto-expand, huge-playlist browser, live settings (no reload), always-available Ψ deck, playlist row filter, duplicate finder & purge, global hotkeys (Alt+Shift+U/S/X), failsafe deck rescue, 404-proof navigation guards.
 // @author       4ndr0666
 // @license      UNLICENSED REDTEAM ONLY
 // @match        https://*.youtube.com/*
@@ -44,6 +44,24 @@
  * Orbitron display (declared with monospace fallbacks — no external font
  * loading, zero network), 150ms ease-in-out transitions, rectangular
  * brutalist buttons, cyan glow containment fields, 6px cyan scrollbars.
+ *
+ * USER GUIDE (full documentation: README.txt / README.md) — v1.3.0
+ *   Install : a userscript manager (Tampermonkey / Violentmonkey /
+ *             Greasemonkey 4) → create a new script → paste this entire
+ *             file → save → hard-refresh YouTube (Ctrl+Shift+R).
+ *   Deck    : the Ψ badge docks bottom-right on EVERY YouTube page; click
+ *             it (or Alt+Shift+U) to expand the command panel.
+ *   Hotkeys : Alt+Shift+U toggle deck · Alt+Shift+S settings ·
+ *             Alt+Shift+X force-show failsafe · Shift+N next video while
+ *             random play / the huge-playlist browser is active.
+ *   Nothing appears? The F12 console must show the Ψ PLAYLIST UNITY
+ *             banner; then run the manager menu command "Ψ Force show
+ *             deck (Alt+Shift+X)".
+ *   Repo    : github.com/4ndr0666/glm — the file is at /blob/main/
+ *             youtubeplaylistmaster.user.js (a /tree/main/<file> URL is a
+ *             directory route and returns GitHub's 404; the raw file is
+ *             raw.githubusercontent.com/4ndr0666/glm/main/
+ *             youtubeplaylistmaster.user.js).
  *
  * CHANGELOG v1.1.0 (GUP v5.3 superset of v1.0.0):
  *   - FIX: deck was invisible outside /playlist and /feed/subscriptions — the
@@ -97,6 +115,35 @@
  *   - ADD: failsafe "Ψ Force show deck (Alt+Shift+X)" manager menu command,
  *     registered before anything else in boot so it survives partial
  *     failures.
+ *
+ * CHANGELOG v1.3.0 (GUP v5.3 superset of v1.2.0) — navigation integrity:
+ *   - FIX (critical, user-reported "revision causes a 404 error when
+ *     trying to navigate"): every programmatic navigation now routes
+ *     through a central NAV.safeNavigate/safeOpen integrity gate (§7). A
+ *     malformed target — an undefined/garbage video or list id, a foreign
+ *     host, an empty watch_videos set — is logged and dropped instead of
+ *     navigating YouTube into a 404 page. (Static proof: the script
+ *     contains zero auto-navigation on plain page loads; this closes every
+ *     click-path and session-path that could 404.)
+ *   - FIX: MENU "Uploader playlist (legacy view=57)" fired on channel HOME
+ *     urls, where YouTube hard-404s /@handle?view=57. It now only
+ *     navigates from channel tab urls (videos/shorts/streams/featured)
+ *     and prints guidance everywhere else.
+ *   - FIX: PLAYER.redirect never validated its ids — /watch?v=undefined
+ *     was reachable via huge-browser rows for deleted entries and via the
+ *     desktop fallback when the playlist panel is absent. Ids are now
+ *     validated (11-char video ids, plausible list ids) before anything;
+ *     the fallback URL is built with URLSearchParams instead of string
+ *     concatenation.
+ *   - FIX: huge-playlist browser renders entries without a valid video id
+ *     as dimmed, non-navigable notes instead of clickable 404 links.
+ *   - FIX: RANDOM play engine filters its localStorage candidate pool by
+ *     valid video id; its row-bypass / exit-badge / reload navigations
+ *     route through the safe gate.
+ *   - FIX: quick-playlist "Open playlist" never exposes an empty
+ *     watch_videos?video_ids= URL (an aux-click on it 404s); the anchor
+ *     stays inert until the list is non-empty.
+ *   - FIX: members-only tab opens its UUMO playlist through the safe gate.
  * ==========================================================================*/
 
 (function __ytpu_root__() {
@@ -108,7 +155,7 @@
 
     const CFG = {
         SCRIPT_NAME: 'Ψ Playlist Unity',
-        SCRIPT_VERSION: '1.2.0',
+        SCRIPT_VERSION: '1.3.0',
         STORAGE_KEY: 'ytpu.settings',
         SNAPSHOT_KEY: 'ytpu.snapshots',
         SNAPSHOT_CAP: 20,             // FIFO cap for stored playlist snapshots
@@ -464,6 +511,72 @@
             return null;
         }
 
+        // ---- v1.3.0: navigation integrity gate -------------------------------
+        // Every programmatic navigation in the script routes through
+        // safeNavigate()/safeOpen(). A malformed target (undefined/garbage
+        // video or list id, foreign host, empty watch_videos set) is logged
+        // and dropped instead of navigating YouTube into a 404 page.
+        const YT_HOST_RE = /(^|\.)youtube\.com$/i;
+
+        function validVideoId(v) {
+            return typeof v === 'string' && /^[A-Za-z0-9_-]{11}$/.test(v);
+        }
+
+        function validListId(l) {
+            return typeof l === 'string' && l.length >= 2
+                && /^[A-Za-z0-9_-]+$/.test(l)
+                && l !== 'undefined' && l !== 'null';
+        }
+
+        function vetUrl(target, label) {
+            let u = null;
+            try { u = new URL(target, location.origin); }
+            catch (e) { /* fall through to the reject below */ }
+            if (!u || (u.protocol !== 'https:' && u.protocol !== 'http:')) {
+                LOG.warn(`navigation blocked (${label}): not an http(s) URL — ${String(target).slice(0, 120)}`);
+                return null;
+            }
+            if (!YT_HOST_RE.test(u.hostname)) {
+                LOG.warn(`navigation blocked (${label}): non-YouTube host ${u.hostname}`);
+                return null;
+            }
+            if (u.pathname === '/watch') {
+                if (!validVideoId(u.searchParams.get('v'))) {
+                    LOG.warn(`navigation blocked (${label}): /watch without a valid 11-char video id — ${u.search}`);
+                    return null;
+                }
+            } else if (u.pathname === '/playlist') {
+                if (!validListId(u.searchParams.get('list'))) {
+                    LOG.warn(`navigation blocked (${label}): /playlist without a plausible list id — ${u.search}`);
+                    return null;
+                }
+            } else if (u.pathname === '/watch_videos') {
+                const ids = (u.searchParams.get('video_ids') || '').split(',').filter(Boolean);
+                if (!ids.length || !ids.every(validVideoId)) {
+                    LOG.warn(`navigation blocked (${label}): watch_videos with an empty/invalid id set`);
+                    return null;
+                }
+            }
+            return u;
+        }
+
+        /** Same-tab navigation through the integrity gate. Returns true iff
+         *  the navigation was allowed to proceed. */
+        function safeNavigate(target, label = 'script') {
+            const u = vetUrl(target, label);
+            if (!u) return false;
+            location.href = u.href;
+            return true;
+        }
+
+        /** New-tab navigation through the integrity gate. Returns the opened
+         *  window, or null when blocked/unsupported. */
+        function safeOpen(target, label = 'script') {
+            const u = vetUrl(target, label);
+            if (!u) return null;
+            return window.open(u.href, '_blank', 'noopener');
+        }
+
         const listeners = new Set();
         function onRoute(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
@@ -516,7 +629,7 @@
             fire('boot');
         }
 
-        return { classify, channelTab, onRoute, fire, start };
+        return { classify, channelTab, onRoute, fire, start, validVideoId, validListId, safeNavigate, safeOpen };
     })();
 
     // ╔══════════════════════════════════════════════════════════════════╗
@@ -547,37 +660,52 @@
         }
 
         /** YouTube client-side routing trick (from YouTube-Play-All redirect()):
-         *  a hidden playlist-panel anchor whose .data carries a watchEndpoint. */
+         *  a hidden playlist-panel anchor whose .data carries a watchEndpoint.
+         *  v1.3.0: ids are validated up front (NAV.validVideoId/validListId)
+         *  and every hard-navigate branch routes through NAV.safeNavigate —
+         *  a malformed id is dropped with a warning instead of navigating
+         *  YouTube into a 404 page. */
         function redirect(videoId, list, extraParam = null) {
+            if (!NAV.validVideoId(videoId)) {
+                LOG.warn(`redirect blocked: "${videoId}" is not a valid video id (dropped instead of a 404 navigation)`);
+                return false;
+            }
+            const safeList = NAV.validListId(list) ? list : null;
+            const buildQuery = () => {
+                const q = new URLSearchParams({ v: videoId });
+                if (safeList) q.set('list', safeList);
+                if (extraParam) q.set(extraParam.key, extraParam.value);
+                return q.toString();
+            };
             if (ENV.isMobile()) {
                 // Mobile cannot use client-side routing reliably — hard navigate.
-                const q = new URLSearchParams({ v: videoId });
-                if (list) q.set('list', list);
-                if (extraParam) q.set(extraParam.key, extraParam.value);
-                location.href = `${location.origin}/watch?${q.toString()}`;
-                return;
+                return NAV.safeNavigate(`${location.origin}/watch?${buildQuery()}`, 'PLAYER.redirect');
             }
             const redirector = document.createElement('a');
             redirector.className = 'yt-simple-endpoint style-scope ytd-playlist-panel-video-renderer';
             redirector.setAttribute('hidden', '');
-            const suffix = extraParam ? `&${extraParam.key}=${extraParam.value}` : '';
             redirector.data = {
                 commandMetadata: {
                     webCommandMetadata: {
-                        url: `/watch?v=${videoId}&list=${list}${suffix}`,
+                        url: `/watch?${buildQuery()}`,
                         webPageType: 'WEB_PAGE_TYPE_WATCH',
                         rootVe: 3832,
                     },
                 },
-                watchEndpoint: { videoId, playlistId: list },
+                watchEndpoint: safeList
+                    ? { videoId, playlistId: safeList }
+                    : { videoId },
             };
             const container = document.querySelector('ytd-playlist-panel-renderer #items');
             if (!container) {
-                location.href = `/watch?v=${videoId}&list=${list}${suffix}`;
-                return;
+                // No playlist panel (huge-playlist fallback surfaces): the
+                // client-side trick has nothing to attach to — hard navigate
+                // through the integrity gate.
+                return NAV.safeNavigate(`/watch?${buildQuery()}`, 'PLAYER.redirect');
             }
             container.append(redirector);
             redirector.click();
+            return true;
         }
 
         return { getPlayer, isAdPlaying, getVideoId, currentTime, getProgressState, redirect };
@@ -2285,7 +2413,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             const secQuick = DOMU.el('div', { class: 'section', id: 'secQuick' }, {}, {}, {}, [
                 DOMU.el('div', { class: 'section-title' }, { textContent: 'Ψ Quick Playlist' }),
                 DOMU.el('div', { class: 'kv', id: 'qpCount' }, {}, { textContent: '0 videos' }),
-                DOMU.el('a', { class: 'btn', id: 'qpOpen', href: 'https://www.youtube.com/watch_videos?video_ids=' }, { textContent: 'Open playlist' }, {}, {
+                DOMU.el('a', { class: 'btn', id: 'qpOpen', href: 'javascript:void(0)' }, { textContent: 'Open playlist' }, {}, {
                     click: (e) => { if (!QUICK.videoIds.length) { e.preventDefault(); logMsg('Quick playlist is empty', 'warn'); } },
                 }),
                 DOMU.el('div', { class: 'actions', style: 'margin-top:6px;' }, {}, {}, {}, [
@@ -2834,7 +2962,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                         if (!chId) chId = await CHANNEL.resolve();
                         if (!chId) { LOG.warn('Members-only: channel id unavailable'); return; }
                         const targetURL = `${location.protocol}//${location.host}/playlist?list=${chId.replace(/^UC/, 'UUMO')}`;
-                        window.open(targetURL, '_blank', 'noopener');
+                        NAV.safeOpen(targetURL, 'MEMBERSTAB.members'); // v1.3.0: integrity gate
                     });
                 }
             }
@@ -3999,7 +4127,12 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 DECK.elx.qpCount.style.color = '';
             }
             if (DECK.elx.qpOpen) {
-                DECK.elx.qpOpen.href = `https://www.youtube.com/watch_videos?video_ids=${videoIds.join(',')}`;
+                // v1.3.0: an empty watch_videos?video_ids= URL 404s — the
+                // anchor stays inert until the list is non-empty (the click
+                // guard below remains as defense in depth).
+                DECK.elx.qpOpen.href = videoIds.length
+                    ? `https://www.youtube.com/watch_videos?video_ids=${videoIds.join(',')}`
+                    : 'javascript:void(0)';
             }
         }
 
@@ -4500,11 +4633,21 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 if (header.title) browser.querySelector('.title').textContent = `Ψ ${header.title}`;
                 browser.querySelector('.footer').textContent = `${items.length} items · list=${list}`;
                 items.forEach((it) => {
-                    const row = DOMU.el('div', { class: 'item', 'data-id': it.videoId, role: 'link', tabindex: '0' }, {
-                        textContent: `${it.deleted ? '⚑ ' : ''}${it.title || it.videoId}${it.lengthText ? ` · ${it.lengthText}` : ''}`,
-                    }, {}, {
+                    // v1.3.0: entries without a valid video id (deleted /
+                    // unavailable) render as dimmed, non-navigable notes —
+                    // a clickable /watch?v=undefined row is a guaranteed 404.
+                    const playable = NAV.validVideoId(it.videoId);
+                    const row = DOMU.el('div', {
+                        class: 'item',
+                        'data-id': it.videoId || '',
+                        role: playable ? 'link' : 'note',
+                        tabindex: playable ? '0' : '-1',
+                    }, {
+                        textContent: `${it.deleted || !playable ? '⚑ ' : ''}${it.title || it.videoId || '[unavailable]'}${it.lengthText ? ` · ${it.lengthText}` : ''}`,
+                    }, {}, playable ? {
                         click: () => PLAYER.redirect(it.videoId, list),
-                    });
+                    } : {});
+                    if (!playable) row.style.opacity = '0.55';
                     box.appendChild(row);
                 });
                 markCurrentItem(new URLSearchParams(location.search).get('v'));
@@ -4622,7 +4765,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 // Bypass client-side routing.
                 element.addEventListener('click', (event) => {
                     event.preventDefault();
-                    window.location.href = element.href;
+                    NAV.safeNavigate(element.href, 'RANDOM.rowBypass'); // v1.3.0: integrity gate
                 });
                 if (videoId && map[videoId]) {
                     element.parentElement.setAttribute('hidden', '');
@@ -4649,7 +4792,9 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             if (player) player.pauseVideo();
 
             const map = readStorage(true);
-            const videos = Object.entries(map).filter(([, watched]) => !watched);
+            // v1.3.0: garbage/legacy localStorage keys can never become a
+            // navigation target — the candidate pool is id-validated.
+            const videos = Object.entries(map).filter(([id, watched]) => !watched && NAV.validVideoId(id));
             if (!videos.length) return;
             const params = new URLSearchParams(location.search);
 
@@ -4672,7 +4817,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 params.delete('t');
                 params.delete('index');
                 params.delete('ytpa-random-initial');
-                window.location.href = `${location.pathname}?${params.toString()}`;
+                NAV.safeNavigate(`${location.pathname}?${params.toString()}`, 'RANDOM.next');
             } else {
                 PLAYER.redirect(videos[videoIndex][0], params.get('list'), { key: 'ytpa-random', value: mode });
             }
@@ -4729,7 +4874,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                         const params = new URLSearchParams(location.search);
                         params.delete('ytpa-random');
                         params.delete('ytpa-random-initial');
-                        window.location.href = `${location.pathname}?${params.toString()}`;
+                        NAV.safeNavigate(`${location.pathname}?${params.toString()}`, 'RANDOM.exit');
                     },
                 }, [
                     document.createTextNode(mode),
@@ -4855,10 +5000,17 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             registered.delete(key);
         }
 
-        /** drhouse's view=57 trick: the legacy channel-uploads playlist view. */
+        /** drhouse's view=57 trick: the legacy channel-uploads playlist view.
+         *  v1.3.0: the legacy renderer only exists on channel TAB urls
+         *  (videos/shorts/streams/featured) — on a channel home YouTube
+         *  hard-404s /@handle?view=57, so we guide instead of navigating. */
         function uploaderView57() {
+            if (!/^\/(@[^/]+|c\/[^/]+|user\/[^/]+|channel\/[^/]+)\/(videos|shorts|streams|featured)$/.test(location.pathname)) {
+                LOG.warn('view=57 needs a channel tab (Videos / Shorts / Live) — open one first, then run this command');
+                return;
+            }
             const sep = location.href.includes('?') ? '&' : '?';
-            window.location.href = `${location.href}${sep}view=57`;
+            NAV.safeNavigate(`${location.href}${sep}view=57`, 'MENU.view57');
         }
 
         function refresh(route) {
