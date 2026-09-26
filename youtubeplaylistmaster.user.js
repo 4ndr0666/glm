@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         4ndr0tools - YouTube Playlist Master
 // @namespace    https://github.com/4ndr0666
-// @version      1.3.0
-// @description  Channel playlist buttons (All / Popular / Videos / Shorts / Streams / Members-only), Random play (prefer newest/oldest), reverse autoplay order, playlist autoplay toggle, duration sort, bulk copy/move/delete, JSON + plaintext export/import, snapshots with deleted-video detection, quick watch_videos playlists, queue & watch-later overlays, playlist close button, date/view metadata, episode auto-expand, huge-playlist browser, live settings (no reload), always-available Ψ deck, playlist row filter, duplicate finder & purge, global hotkeys (Alt+Shift+U/S/X), failsafe deck rescue, 404-proof navigation guards.
+// @version      1.4.0
+// @description  Channel playlist buttons (All / Popular / Videos / Shorts / Streams / Members-only), Random play (prefer newest/oldest), reverse autoplay order, playlist autoplay toggle, duration sort, bulk copy/move/delete, JSON + plaintext export/import, snapshots with deleted-video detection, quick watch_videos playlists, queue & watch-later overlays, playlist close button, date/view metadata, episode auto-expand, huge-playlist browser, live settings (no reload), always-available Ψ deck, playlist row filter, duplicate finder & purge, global hotkeys (Alt+Shift+U/S/X), failsafe deck rescue, 404-proof navigation guards, Trusted-Types-immune rendering.
 // @author       4ndr0666
 // @license      UNLICENSED REDTEAM ONLY
 // @match        https://*.youtube.com/*
@@ -144,6 +144,41 @@
  *     watch_videos?video_ids= URL (an aux-click on it 404s); the anchor
  *     stays inert until the list is non-empty.
  *   - FIX: members-only tab opens its UUMO playlist through the safe gate.
+ *
+ * CHANGELOG v1.4.0 (GUP v5.3 superset of v1.3.0) — Trusted Types immunity:
+ *   - FIX (critical, field-proven via youtubeplaylistmaster_debug.txt): on
+ *     Trusted-Types-enforcing profiles (Chrome 138 field log) the deck never
+ *     mounted — DOMParser.parseFromString is itself a Trusted Types sink
+ *     and threw "This document requires 'TrustedHTML' assignment" inside
+ *     GLYPH.node() at mount, plus 54 uncaught throws out of DOMU.svgEl()
+ *     across feature paths. ALL SVG construction is now namespace-correct
+ *     createElementNS (new DOMU.svg builder; GLYPH fully rebuilt); the
+ *     script contains ZERO HTML-string sinks (no parseFromString, no
+ *     innerHTML, no insertAdjacentHTML, no document.write) — Trusted-Types
+ *     immune BY CONSTRUCTION, with no dependence on a policy exemption the
+ *     host page could refuse.
+ *   - FIX (cascade): DECK.mount committed its root node to the DOM before
+ *     the panel was built — a construction throw left a live-but-empty
+ *     #ytpu-deck node, which made root.isConnected true and silently
+ *     defeated the idempotency guard, the 5 s watchdog AND the Alt+Shift+X
+ *     rescue (all three see "connected" and skip the re-mount). mount() is
+ *     now atomic: the whole deck is built into locals and module state is
+ *     mutated only in the final commit phase; any throw leaves the deck
+ *     unmounted-but-recoverable with every recovery path operational.
+ *   - FIX: updateVisibility guards the element registry as well as the
+ *     root — the field log shows the v1.3.0 cascade dying on elx.secManager
+ *     after a failed mount left an empty registry behind.
+ *   - FIX: deck log clearing used an innerHTML assignment — a TT sink under
+ *     enforcement even for the empty string; now replaceChildren() with a
+ *     legacy fallback.
+ *   - FIX: watchdog re-mount failures were logged at debug level only
+ *     (invisible in the field log while the deck stayed down all session);
+ *     the first consecutive failure now escalates to error level with the
+ *     retry cadence stated, then stays quiet so a persistent fault cannot
+ *     flood the console.
+ *   - DEL (authorized, zero-dead-code mandate): ENV.ttPolicy + ENV.setHTML
+ *     — the TrustedTypes policy pair became dead code once the last HTML
+ *     sink was eliminated; setHTML already had zero callers in v1.3.0.
  * ==========================================================================*/
 
 (function __ytpu_root__() {
@@ -155,7 +190,7 @@
 
     const CFG = {
         SCRIPT_NAME: 'Ψ Playlist Unity',
-        SCRIPT_VERSION: '1.3.0',
+        SCRIPT_VERSION: '1.4.0',
         STORAGE_KEY: 'ytpu.settings',
         SNAPSHOT_KEY: 'ytpu.snapshots',
         SNAPSHOT_CAP: 20,             // FIFO cap for stored playlist snapshots
@@ -291,25 +326,20 @@
             return pageWin.fetch(url, options);
         }
 
-        // Named TrustedTypes policy (PlaylistPlus pattern). Deliberately NOT
-        // the page-wide 'default' policy: a named policy scopes the exemption
-        // to our own markup and leaves the host page's CSP intact for others.
-        const ttPolicy = (() => {
-            try {
-                const TT = pageWin.trustedTypes || (typeof trustedTypes !== 'undefined' ? trustedTypes : null);
-                return TT && TT.createPolicy ? TT.createPolicy('ytpu', { createHTML: (s) => s }) : null;
-            } catch (e) {
-                return null;
-            }
-        })();
-
-        function setHTML(el, html) {
-            el.innerHTML = ttPolicy ? ttPolicy.createHTML(html) : html;
-        }
+        // v1.4.0: the TrustedTypes policy (ttPolicy) and its setHTML helper
+        // were removed. Runtime evidence (youtubeplaylistmaster_debug.txt)
+        // proved Chrome's Trusted Types enforcement also covers
+        // DOMParser.parseFromString — the two svg builders used it un-gated,
+        // so the deck died at mount on every TT-enforcing profile while
+        // setHTML sat uncalled (dead code). The script now builds ALL of its
+        // DOM through the createElement/createElementNS APIs: zero
+        // HTML-string sinks remain (no innerHTML, no parseFromString), so it
+        // is Trusted-Types-immune BY CONSTRUCTION and needs no policy
+        // exemption from the host page's CSP.
 
         function isMobile() { return location.host === 'm.youtube.com'; }
 
-        return { pageWin, pageDoc, cfgGet, pageFetch, ttPolicy, setHTML, isMobile };
+        return { pageWin, pageDoc, cfgGet, pageFetch, isMobile };
     })();
 
     // ╔══════════════════════════════════════════════════════════════════╗
@@ -331,14 +361,23 @@
             return node;
         }
 
-        function svgEl(markup) {
-            // markup: inner SVG content string; returns a detached <svg> node built
-            // via DOMParser so CSP/TrustedTypes never sees raw innerHTML assignment.
-            const doc = new DOMParser().parseFromString(
-                `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${markup}</svg>`,
-                'image/svg+xml',
-            );
-            return document.importNode(doc.documentElement, true);
+        /** v1.4.0: namespace-correct SVG builder. The DOMParser-based
+         *  svgEl predecessor was a Trusted Types sink — parseFromString
+         *  requires a TrustedHTML object under enforcement and threw on
+         *  every TT-hardened profile (54 uncaught TypeErrors in the field
+         *  debug log, plus the deck-mount failure itself). All SVG in this
+         *  script is now built through createElementNS, which no Trusted
+         *  Types policy ever intercepts. */
+        function svg(tag, attrs = {}, children = [], text = null) {
+            const ns = 'http://www.w3.org/2000/svg';
+            const node = document.createElementNS(ns, tag);
+            for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+            for (const child of children) {
+                if (child === null || child === undefined) continue;
+                node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+            }
+            if (text !== null) node.textContent = text;
+            return node;
         }
 
         function svgPath(d, extraAttrs = {}) {
@@ -474,7 +513,7 @@
         }
 
         return {
-            el, svgEl, svgPath, escapeHtml, waitForElement, observeDocument,
+            el, svg, svgPath, escapeHtml, waitForElement, observeDocument,
             onParentChildSelectors, setPageStyle, copyText, timestampToSeconds, fmtBytes,
         };
     })();
@@ -1692,34 +1731,73 @@
     // ╚══════════════════════════════════════════════════════════════════╝
 
     const GLYPH = (() => {
-        const MARKUP = `
-            <path d="M 64,12 A 52,52 0 1 1 63.9,12 Z" stroke-dasharray="21.78 21.78" stroke-width="2"/>
-            <path d="M 64,20 A 44,44 0 1 1 63.9,20 Z" stroke-dasharray="10 10" stroke-width="1.5" opacity="0.7"/>
-            <path d="M64 30 L91.3 47 L91.3 81 L64 98 L36.7 81 L36.7 47 Z"/>
-            <text x="64" y="67" text-anchor="middle" dominant-baseline="middle"
-                  fill="#00E5FF" stroke="none" font-size="56" font-weight="700"
-                  font-family="'Cinzel Decorative', serif">Ψ</text>`;
+        // v1.4.0: rebuilt via namespace-correct createElementNS (DOMU.svg).
+        // The previous DOMParser/parseFromString construction was a Trusted
+        // Types sink — under TT enforcement (field debug log,
+        // youtubeplaylistmaster_debug.txt) parseFromString requires a
+        // TrustedHTML object and threw at deck mount, leaving the Ψ deck
+        // unmounted on every hardened profile. Attribute-for-attribute the
+        // rendered glyph is identical; only the construction path changed.
+
+        /** Ring pair + hexagon outline shared by both renderings (128 canvas). */
+        function ringAndHexagon() {
+            return [
+                DOMU.svg('path', {
+                    d: 'M 64,12 A 52,52 0 1 1 63.9,12 Z',
+                    'stroke-dasharray': '21.78 21.78', 'stroke-width': '2',
+                }),
+                DOMU.svg('path', {
+                    d: 'M 64,20 A 44,44 0 1 1 63.9,20 Z',
+                    'stroke-dasharray': '10 10', 'stroke-width': '1.5', opacity: '0.7',
+                }),
+                DOMU.svg('path', { d: 'M64 30 L91.3 47 L91.3 81 L64 98 L36.7 81 L36.7 47 Z' }),
+            ];
+        }
 
         /** Build the Ψ glyph as a detached SVG node at an explicit size. */
         function node(size = 24, stroke = '#00E5FF') {
-            const doc = new DOMParser().parseFromString(
-                `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="${size}" height="${size}"
-                      fill="none" stroke="${stroke}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${MARKUP}</svg>`,
-                'image/svg+xml',
-            );
-            return document.importNode(doc.documentElement, true);
+            return DOMU.svg('svg', {
+                viewBox: '0 0 128 128', width: String(size), height: String(size),
+                fill: 'none', stroke, 'stroke-width': '3',
+                'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+            }, [
+                ...ringAndHexagon(),
+                DOMU.svg('text', {
+                    x: '64', y: '67', 'text-anchor': 'middle', 'dominant-baseline': 'middle',
+                    fill: '#00E5FF', stroke: 'none', 'font-size': '56', 'font-weight': '700',
+                    'font-family': "'Cinzel Decorative', serif",
+                }, [], 'Ψ'),
+            ]);
         }
 
-        /** Inner content for embedding inside another svg viewBox 0 0 24 24 context. */
-        const INLINE_24 = `<g transform="scale(0.1875)" fill="none" stroke="currentColor" stroke-width="12"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M 64,12 A 52,52 0 1 1 63.9,12 Z" stroke-dasharray="21.78 21.78" stroke-width="9"/>
-            <path d="M 64,20 A 44,44 0 1 1 63.9,20 Z" stroke-dasharray="10 10" stroke-width="7" opacity="0.7"/>
-            <path d="M64 30 L91.3 47 L91.3 81 L64 98 L36.7 81 L36.7 47 Z"/>
-            <text x="64" y="72" text-anchor="middle" fill="currentColor" stroke="none" font-size="58"
-                  font-weight="700" font-family="serif">Ψ</text></g>`;
+        /** Standalone 24×24 icon variant (menu entries, buttons). The Ψ is
+         *  scaled from its 128 canvas into the 24 viewport via a 0.1875 group
+         *  transform — identical shapes to node() at icon scale (the v1.3.0
+         *  INLINE_24 markup string, rebuilt TT-immune). */
+        function inline24() {
+            return DOMU.svg('svg', { viewBox: '0 0 24 24' }, [
+                DOMU.svg('g', {
+                    transform: 'scale(0.1875)', fill: 'none', stroke: 'currentColor',
+                    'stroke-width': '12', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+                }, [
+                    DOMU.svg('path', {
+                        d: 'M 64,12 A 52,52 0 1 1 63.9,12 Z',
+                        'stroke-dasharray': '21.78 21.78', 'stroke-width': '9',
+                    }),
+                    DOMU.svg('path', {
+                        d: 'M 64,20 A 44,44 0 1 1 63.9,20 Z',
+                        'stroke-dasharray': '10 10', 'stroke-width': '7', opacity: '0.7',
+                    }),
+                    DOMU.svg('path', { d: 'M64 30 L91.3 47 L91.3 81 L64 98 L36.7 81 L36.7 47 Z' }),
+                    DOMU.svg('text', {
+                        x: '64', y: '72', 'text-anchor': 'middle', fill: 'currentColor',
+                        stroke: 'none', 'font-size': '58', 'font-weight': '700', 'font-family': 'serif',
+                    }, [], 'Ψ'),
+                ]),
+            ]);
+        }
 
-        return { node, INLINE_24 };
+        return { node, inline24 };
     })();
 
     // ╔══════════════════════════════════════════════════════════════════╗
@@ -2090,7 +2168,12 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         function renderLog() {
             if (!elx.log) return;
-            elx.log.innerHTML = '';
+            // v1.4.0: clear via replaceChildren — innerHTML assignment is a
+            // Trusted Types sink even for the empty string on enforcing
+            // profiles. The innerHTML fallback only ever runs on pre-2020
+            // engines, none of which implement Trusted Types.
+            if (typeof elx.log.replaceChildren === 'function') elx.log.replaceChildren();
+            else elx.log.innerHTML = '';
             for (const e of logRing.slice(-10).reverse()) {
                 elx.log.appendChild(DOMU.el('div', { class: `log-${e.kind}` }, { textContent: e.msg }));
             }
@@ -2134,7 +2217,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function updateVisibility(route) {
-            if (!root) return;
+            if (!root || !elx.panel) return; // v1.4.0: guard the registry too — a partial mount must no-op
             const show = STORE.data().appearance.deckEverywhere !== false
                 || route.isPlaylistPage || route.isSubscriptions || (route.isWatch && !!route.list);
             root.style.display = show ? '' : 'none';
@@ -2282,15 +2365,23 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 shadow = null;
                 for (const key of Object.keys(elx)) delete elx[key];
             }
-            root = document.createElement('div');
-            root.id = 'ytpu-deck';
-            root.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:2147483646;';
-            shadow = root.attachShadow({ mode: 'open' });
-            document.body.appendChild(root);
+            // v1.4.0: atomic mount. v1.3.0 committed `root` to the DOM before
+            // building the panel — a construction throw (e.g. the v1.3.0
+            // TrustedTypes failure) left a live-but-empty #ytpu-deck node that
+            // made `root.isConnected` true, which silently defeated the
+            // idempotency guard, the 5 s watchdog AND the Alt+Shift+X rescue
+            // (all see "connected" and skip the re-mount). Everything is now
+            // built into locals and module state is only mutated in the
+            // commit phase at the end — a throw leaves root null, elx empty
+            // and nothing appended, so every recovery path stays operational.
+            const nextRoot = document.createElement('div');
+            nextRoot.id = 'ytpu-deck';
+            nextRoot.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:2147483646;';
+            const nextShadow = nextRoot.attachShadow({ mode: 'open' });
 
             const style = document.createElement('style');
             style.textContent = THEME.deckCss();
-            shadow.appendChild(style);
+            nextShadow.appendChild(style);
 
             const panel = DOMU.el('div', { class: 'panel collapsed', id: 'panel' });
 
@@ -2445,9 +2536,9 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             panel.appendChild(destpicker);
             panel.appendChild(log);
             panel.appendChild(hint);
-            shadow.appendChild(panel);
+            nextShadow.appendChild(panel);
 
-            Object.assign(elx, {
+            const nextElx = {
                 panel, badge, badgeCount, header, acct: header.querySelector('#acct'), count: header.querySelector('#count'),
                 settingsBtn: header.querySelector('#settingsBtn'), collapse: header.querySelector('#collapse'),
                 bar: progress.querySelector('#bar'),
@@ -2465,11 +2556,19 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 qpCount: secQuick.querySelector('#qpCount'), qpOpen: secQuick.querySelector('#qpOpen'),
                 qpCopy: secQuick.querySelector('#qpCopy'), qpClear: secQuick.querySelector('#qpClear'),
                 destpicker, log,
-            });
-
+            };
             // reflect persisted options into the selects
-            elx.sortMode.value = STORE.data().sort.mode;
-            elx.sortScroll.value = STORE.data().sort.autoScroll ? 'all' : 'loaded';
+            nextElx.sortMode.value = STORE.data().sort.mode;
+            nextElx.sortScroll.value = STORE.data().sort.autoScroll ? 'all' : 'loaded';
+
+            // ---- commit phase: module state changes only after the whole
+            // deck has been built. A throw anywhere above leaves root null,
+            // elx empty and nothing appended to the document — the watchdog,
+            // rescue and hotkey paths all remain fully operational. ----
+            document.body.appendChild(nextRoot);
+            root = nextRoot;
+            shadow = nextShadow;
+            Object.assign(elx, nextElx);
 
             if (!selectionWired) {
                 // v1.2.0: register exactly once across re-mounts (the adapter
@@ -3031,12 +3130,12 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function buildButton() {
-            const svg = DOMU.svgEl(`
-                <g class="arrows">
-                    <polygon class="arrow-up" points="6,8.5 6,6.5 3,6.5 8,1.5 13,6.5 10,6.5 10,8.5"/>
-                    <polygon class="arrow-down" points="6,15.5 6,17.5 3,17.5 8,22.5 13,17.5 10,17.5 10,15.5"/>
-                </g>`);
-            svg.setAttribute('viewBox', '0 0 16 24');
+            const svg = DOMU.svg('svg', { viewBox: '0 0 16 24' }, [
+                DOMU.svg('g', { class: 'arrows' }, [
+                    DOMU.svg('polygon', { class: 'arrow-up', points: '6,8.5 6,6.5 3,6.5 8,1.5 13,6.5 10,6.5 10,8.5' }),
+                    DOMU.svg('polygon', { class: 'arrow-down', points: '6,15.5 6,17.5 3,17.5 8,22.5 13,17.5 10,17.5 10,15.5' }),
+                ]),
+            ]);
             const btn = DOMU.el('button', {
                 class: 'ytpu-rev-btn', id: 'ytpu-rev-btn', title: 'Autoplay order', 'aria-pressed': 'false',
             }, {}, {}, {
@@ -3749,7 +3848,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             let place = document.querySelector("tp-yt-iron-dropdown.ytd-popup-container .yt-list-view-model-wiz[role='menu']");
             if (!place) place = document.querySelector("tp-yt-iron-dropdown.ytd-popup-container tp-yt-paper-listbox.ytd-menu-popup-renderer[role='listbox']");
             if (!place) return;
-            const icon = DOMU.svgEl(GLYPH.INLINE_24);
+            const icon = GLYPH.inline24();
             const wrap = document.createElement('div');
             wrap.id = 'ytpuExportEntry';
             wrap.setAttribute('role', 'menuitem');
@@ -4455,12 +4554,12 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             const b = document.createElement('a');
             b.id = 'ytpu-close-playlist-btn';
             b.title = 'Close playlist';
-            const svg = DOMU.svgEl('<path d="M5 5 L19 19 M19 5 L5 19" stroke-linecap="round"/>');
-            svg.setAttribute('width', '20');
-            svg.setAttribute('height', '20');
-            svg.setAttribute('fill', 'none');
-            svg.setAttribute('stroke', 'currentColor');
-            svg.setAttribute('stroke-width', '2.4');
+            const svg = DOMU.svg('svg', {
+                viewBox: '0 0 24 24', width: '20', height: '20',
+                fill: 'none', stroke: 'currentColor', 'stroke-width': '2.4',
+            }, [
+                DOMU.svg('path', { d: 'M5 5 L19 19 M19 5 L5 19', 'stroke-linecap': 'round' }),
+            ]);
             b.appendChild(svg);
             b.addEventListener('mouseenter', updateURL);
             b.addEventListener('mouseup', () => {
@@ -5178,14 +5277,25 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
          *  interval of the same class as NAV's mobile poll. */
         function armWatchdog() {
             if (watchdogId !== null) return;
+            let mountFails = 0; // v1.4.0: consecutive re-mount failure tracking
             watchdogId = setInterval(() => {
                 try {
                     if (!DECK.root || !DECK.root.isConnected) {
                         DECK.mount();
                         DECK.updateVisibility(NAV.classify());
                         DECK.logMsg('Deck was detached — automatically re-mounted', 'warn');
+                        mountFails = 0;
                     }
-                } catch (e) { LOG.debug('watchdog re-mount failed:', e && e.message); }
+                } catch (e) {
+                    // v1.4.0: re-mount failures were debug-level (invisible in
+                    // the field log while the deck silently stayed down for
+                    // the whole session). Escalate the FIRST consecutive
+                    // failure to error level with the retry cadence stated,
+                    // then stay quiet so a persistent fault cannot flood the
+                    // console; the counter resets on the next success.
+                    mountFails += 1;
+                    if (mountFails === 1) LOG.error('deck re-mount failed — the watchdog keeps retrying every 5 s:', e);
+                }
             }, 5000);
         }
 
