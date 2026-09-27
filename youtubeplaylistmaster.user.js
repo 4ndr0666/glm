@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4ndr0tools - YouTube Playlist Master
 // @namespace    https://github.com/4ndr0666
-// @version      1.5.0
+// @version      1.6.0
 // @description  Channel playlist buttons (All / Popular / Videos / Shorts / Streams / Members-only), Random play (prefer newest/oldest), reverse autoplay order, playlist autoplay toggle, duration sort, bulk copy/move/delete, JSON + plaintext export/import, snapshots with deleted-video detection, quick watch_videos playlists, queue & watch-later overlays, playlist close button, date/view metadata, episode auto-expand, huge-playlist browser, live settings (no reload), always-available Ψ deck, playlist row filter, duplicate finder & purge, global hotkeys (Alt+Shift+U/S/X), failsafe deck rescue, 404-proof navigation guards, Trusted-Types-immune rendering, fully-visible fit-content modal dialogs.
 // @author       4ndr0666
 // @license      UNLICENSED REDTEAM ONLY
@@ -16,9 +16,58 @@
 // @grant        unsafeWindow
 // @run-at       document-idle
 // @noframes
-// @downloadURL  https://raw.githubusercontent.com/4ndr0666/glm/main/youtubeplaylistmaster.user.js
-// @updateURL    https://raw.githubusercontent.com/4ndr0666/glm/main/youtubeplaylistmaster.user.js
+// @downloadURL  https://github.com/4ndr0666/userscripts/raw/refs/heads/main/4ndr0tools%20-%20YouTube%20Playlist%20Master.user.js
+// @updateURL    https://github.com/4ndr0666/userscripts/raw/refs/heads/main/4ndr0tools%20-%20YouTube%20Playlist%20Master.user.js
 // ==/UserScript==
+
+/* ============================================================================
+ *                           VERSION HISTORY (GUP-superset)
+ * ============================================================================
+ * v1.6.0 (2026-09-27) — field-run gap mitigation on the v1.5.0 golden unit.
+ *   Evidence: youtubeplaylistmaster_debug.txt (2026-09-27 09:20 session) —
+ *   the deck mounted (banner + "mounted" logged at 09:20:08.2) yet no
+ *   feature ever materialized: the page spent the following seconds
+ *   churning on heavy I/O (requestIdleCallback chains, blocked-telemetry
+ *   retries amplified by the counter-surveillance blockers) while every
+ *   script feature sat behind synchronous O(N) DOM sweeps and one raw
+ *   un-throttled document-wide observer. On huge playlists the script's
+ *   own sweeps join that churn as long tasks instead of interleaving with
+ *   it — the script starves the page and the page starves the script.
+ *
+ *   ADDED — SCHED cooperative sweep runner (I/O-resilience): all O(N)
+ *     row/thumbnail sweeps (DOMADAPTER checkbox injection / select-all /
+ *     checkbox refresh / row filter, QUICK buttons, QUEUE overlays,
+ *     METAINFO initial sweep) now run in bounded yielding slices (40
+ *     nodes, setTimeout(0) yield between slices) that interleave with the
+ *     page's heavy-I/O churn instead of joining it as one more long
+ *     synchronous task. Sweeps coalesce per key (never cancel — forward
+ *     progress is guaranteed even under continuous churn) and isolate
+ *     per-node faults (first 3 logged, rest summarized — no console
+ *     flooding). The deck row filter is additionally keystroke-debounced
+ *     (120 ms) so typing a needle no longer fires an O(N) sweep per key.
+ *
+ *   THROTTLED — CLOSE's playlist-close observer was the last raw
+ *     un-throttled whole-document MutationObserver (2 full-document
+ *     queries per mutation batch, hundreds of batches/s during churn);
+ *     it now rides the 300 ms debounced document observer.
+ *
+ *   WIRED — SAFETY.attachGlobalListener (defined since v1.1.0, never
+ *     called — grep-verified 2 occurrences: definition + export): the
+ *     global error/unhandledrejection shield now actually attaches at
+ *     BOOT, before any feature starts.
+ *
+ *   REMOVED — dead units with zero call sites (grep-verified; v1.4.0/
+ *     v1.2.0 orphans, user-authorized zero-dead-code sweep):
+ *     DOMU.escapeHtml (orphaned by the v1.4.0 Trusted-Types rebuild),
+ *     DOMU.timestampToSeconds (SORTER parses inline),
+ *     SAFETY.safeTimeout/safeInterval (never adopted).
+ *
+ *   HARDENED — RANDOM.applyRandomPlay null-guards a missing #items host
+ *     (was a per-tick TypeError caught only by safeWrap); MANAGER bulk-op
+ *     progress callbacks guard a mid-re-mount deck; AUTH.readSAPISID
+ *     re-reads cookies when the active account identity changes (fixes
+ *     stale-SAPISID auth failures after account switches).
+ * ==========================================================================*/
 
 /* ============================================================================
  *                           TROUBLESHOOTING
@@ -29,7 +78,7 @@
  *   Hotkeys : Alt+Shift+U toggle deck · Alt+Shift+S settings ·
  *             Alt+Shift+X force-show failsafe · Shift+N next video while
  *             random play / the huge-playlist browser is active.
- *   Nothing appears? The F12 console must show the Ψ PLAYLIST UNITY
+ *   Nothing appears? The F12 console must show the Ψ PLAYLIST MASTER
  *             banner; then run the manager menu command "Ψ Force show
  *             deck (Alt+Shift+X)".
  *
@@ -39,8 +88,8 @@
     'use strict';
 
     const CFG = {
-        SCRIPT_NAME: 'Ψ Playlist Unity',
-        SCRIPT_VERSION: '1.5.0',
+        SCRIPT_NAME: 'Ψ Playlist Master',
+        SCRIPT_VERSION: '1.6.0',
         STORAGE_KEY: 'ytpu.settings',
         SNAPSHOT_KEY: 'ytpu.snapshots',
         SNAPSHOT_CAP: 20,
@@ -111,10 +160,8 @@
                 return undefined;
             };
         }
-        const safeTimeout = (fn, ms) => setTimeout(safeWrap(fn), ms);
-        const safeInterval = (fn, ms) => setInterval(safeWrap(fn), ms);
         const safeListen = (node, ev, fn, opts) => node.addEventListener(ev, safeWrap(fn), opts);
-        return { handleError, attachGlobalListener, safeWrap, safeTimeout, safeInterval, safeListen };
+        return { handleError, attachGlobalListener, safeWrap, safeListen };
     })();
 
     const BUS = (() => {
@@ -213,10 +260,6 @@
             for (const [k, v] of Object.entries(extraAttrs)) path.setAttribute(k, v);
             svg.appendChild(path);
             return svg;
-        }
-
-        function escapeHtml(s) {
-            return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
         /** waitForElement — MutationObserver-driven, with hard timeout + cleanup. */
@@ -319,26 +362,88 @@
             }
         }
 
-        /** Parse "1:23:45" style timestamps to seconds; returns null when absent. */
-        function timestampToSeconds(text) {
-            if (!text || typeof text !== 'string') return null;
-            const parts = text.trim().split(':').reverse();
-            if (parts.length < 2) return null;
-            let seconds = parseInt(parts[0], 10) || 0;
-            if (parts[1]) seconds += (parseInt(parts[1], 10) || 0) * 60;
-            if (parts[2]) seconds += (parseInt(parts[2], 10) || 0) * 3600;
-            return seconds;
-        }
-
         function fmtBytes(n) {
             const kb = Math.max(0, Math.round(n / 1024));
             return `${kb} KB`;
         }
 
         return {
-            el, svg, svgPath, escapeHtml, waitForElement, observeDocument,
-            onParentChildSelectors, setPageStyle, copyText, timestampToSeconds, fmtBytes,
+            el, svg, svgPath, waitForElement, observeDocument,
+            onParentChildSelectors, setPageStyle, copyText, fmtBytes,
         };
+    })();
+
+    const SCHED = (() => {
+        // Paradigm: cooperative main-thread scheduling — O(N) DOM sweeps run
+        // in bounded slices with yields between them, so a huge-playlist
+        // page churning on heavy I/O never has to absorb the script's sweeps
+        // as one more long synchronous task (and the script's own timers are
+        // never starved behind its own work). v1.6.0 answer to the
+        // youtubeplaylistmaster_debug.txt field report: the deck mounted,
+        // then nothing materialized while the page choked.
+
+        const CHUNK = 40;           // nodes per slice — a few ms of work
+        const MAX_NODE_ERRORS = 3;  // per-node fault isolation, no flooding
+
+        // key -> { running, pending: null | () => void }
+        const sweeps = new Map();
+
+        const nextTick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+        /** Run `worker` over `nodes` in yielding slices.
+         *  - Coalescing, NOT cancellation: while a sweep for `key` runs,
+         *    later invocations are remembered as a single trailing re-run.
+         *    Continuous DOM churn therefore can never restart a sweep
+         *    forever — forward progress is guaranteed — and each re-run
+         *    only sees whatever is still outstanding thanks to the callers'
+         *    own per-node idempotence guards (PROCESSED_ATTR, .ytpu-cb
+         *    presence, dataset keys).
+         *  - Per-node fault isolation (GUP fault-isolation parity with
+         *    BOOT.startAllFeatures): a throwing worker is logged and the
+         *    sweep continues with the remaining nodes; beyond the first
+         *    MAX_NODE_ERRORS the rest are summarized in one line.
+         *  - `onDone` runs after the final slice of the final pass only. */
+        function sweep(key, nodes, worker, { chunk = CHUNK, onDone = null } = {}) {
+            const state = sweeps.get(key) || { running: false, pending: null };
+            sweeps.set(key, state);
+            if (state.running) {
+                state.pending = () => sweep(key, nodes, worker, { chunk, onDone });
+                return;
+            }
+            state.running = true;
+            const list = Array.prototype.slice.call(nodes); // static snapshot
+            (async () => {
+                try {
+                    let nodeErrors = 0;
+                    for (let i = 0; i < list.length; i += chunk) {
+                        const end = Math.min(i + chunk, list.length);
+                        for (let j = i; j < end; j++) {
+                            try {
+                                worker(list[j], j);
+                            } catch (e) {
+                                nodeErrors += 1;
+                                if (nodeErrors <= MAX_NODE_ERRORS) LOG.error(`SCHED[${key}] node failed:`, e);
+                            }
+                        }
+                        if (end < list.length) await nextTick();
+                    }
+                    if (nodeErrors > MAX_NODE_ERRORS) {
+                        LOG.error(`SCHED[${key}]: ${nodeErrors} nodes failed (${nodeErrors - MAX_NODE_ERRORS} further errors suppressed)`);
+                    }
+                } finally {
+                    state.running = false;
+                    if (state.pending) {
+                        const rerun = state.pending;
+                        state.pending = null;
+                        rerun();
+                    } else if (onDone) {
+                        try { onDone(); } catch (e) { LOG.error(`SCHED[${key}] onDone failed:`, e); }
+                    }
+                }
+            })();
+        }
+
+        return { sweep, nextTick };
     })();
 
     const NAV = (() => {
@@ -841,16 +946,21 @@
 
     const AUTH = (() => {
         let sapisid = null;
+        // v1.6.0: identity-keyed cache — a cached SAPISID survived account
+        // switches (the cookie changes, the cache didn't), leaving every
+        // authenticated InnerTube call failing with 401 until a reload.
+        let sapisidTag = null;
 
         function readSAPISID() {
-            if (sapisid) return sapisid;
+            const tag = identityTag();
+            if (sapisid && sapisidTag === tag) return sapisid;
             const jar = {};
             for (const c of document.cookie.split(';').map((s) => s.trim())) {
                 const i = c.indexOf('=');
                 if (i > 0) jar[c.slice(0, i)] = c.slice(i + 1);
             }
             for (const k of ['SAPISID', '__Secure-3PAPISID', '__Secure-1PAPISID']) {
-                if (jar[k]) { sapisid = jar[k]; return sapisid; }
+                if (jar[k]) { sapisid = jar[k]; sapisidTag = tag; return sapisid; }
             }
             return null;
         }
@@ -1389,7 +1499,9 @@
         }
 
         function refreshCheckboxes() {
-            rows().forEach((r) => {
+            // v1.6.0: O(N) read pass — chunked through SCHED so a 5000-row
+            // playlist doesn't turn a "Clear" click into a long task.
+            SCHED.sweep('domadapter.refresh', rows(), (r) => {
                 const rowKey = r.dataset.ytpuRowKey;
                 const cb = r.querySelector('.ytpu-cb');
                 if (cb && rowKey) cb.checked = selected.has(rowKey);
@@ -1424,13 +1536,17 @@
         function injectCheckboxes() {
             if (!isPlaylistPage()) return;
             if (!STORE.data().manager.enabled) return;
-            rows().forEach((row) => {
+            // v1.6.0: chunked + yielding (SCHED) — on huge playlists the
+            // old synchronous forEach was a multi-second long task that
+            // joined YouTube's own heavy-I/O churn instead of interleaving
+            // with it. Same per-row work, same guards, same end state.
+            SCHED.sweep('domadapter.rows', rows(), (row) => {
                 if (row.querySelector('.ytpu-cb')) return;
                 if (!row.dataset.ytpuRowKey) row.dataset.ytpuRowKey = `r${++rowSeq}`;
                 const cb = document.createElement('input');
                 cb.type = 'checkbox';
                 cb.className = 'ytpu-cb';
-                cb.title = 'Playlist Unity selection';
+                cb.title = 'Playlist Master selection';
                 cb.style.cssText = 'margin-right: 8px; width: 18px; height: 18px; cursor: pointer; accent-color: #00E5FF;';
                 cb.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1443,35 +1559,40 @@
                 });
                 const anchor = row.querySelector('#index-container') || row.querySelector('#index') || row.firstElementChild;
                 if (anchor) anchor.insertBefore(cb, anchor.firstChild);
-            });
-            refreshCheckboxes();
+            }, { onDone: () => refreshCheckboxes() });
         }
 
         function selectAll() {
             if (!STORE.data().manager.enabled) return;
-            rows().forEach((row) => {
+            // v1.6.0: chunked + yielding (SCHED); emit fires once at the end,
+            // exactly as before.
+            SCHED.sweep('domadapter.selectall', rows(), (row) => {
                 if (!row.dataset.ytpuRowKey) row.dataset.ytpuRowKey = `r${++rowSeq}`;
                 const entry = rowEntry(row);
                 if (row.dataset.ytpuRowKey && entry.videoId) selected.set(row.dataset.ytpuRowKey, entry);
-            });
-            refreshCheckboxes();
-            emit();
+            }, { onDone: () => { refreshCheckboxes(); emit(); } });
         }
 
         /** Live row filter: hide rows whose title doesn't contain the needle.
          *  Purely presentational — selection state is untouched, so a hidden
-         *  selected row still participates in bulk operations. */
+         *  selected row still participates in bulk operations.
+         *  v1.6.0: the per-row pass is chunked through SCHED, and setFilter
+         *  debounces keystrokes (120 ms) so typing a needle into the deck on
+         *  a 5000-row playlist no longer fires an O(N) sweep per keypress. */
         function applyFilter() {
             if (!isPlaylistPage()) return;
             const needle = filterText.trim().toLowerCase();
-            rows().forEach((row) => {
+            SCHED.sweep('domadapter.filter', rows(), (row) => {
                 row.classList.toggle('ytpu-row-hidden', !!needle && !titleOf(row).toLowerCase().includes(needle));
             });
         }
 
+        let applyTimer = null;
+
         function setFilter(text) {
             filterText = String(text || '');
-            applyFilter();
+            if (applyTimer) clearTimeout(applyTimer);
+            applyTimer = setTimeout(SAFETY.safeWrap(applyFilter), 120);
         }
 
         function start() {
@@ -1588,7 +1709,7 @@
         function pageCss() {
             const adaptive = STORE.data().appearance.theme === 'adaptive';
             if (adaptive) return `
-/* ——— Ψ Playlist Unity · adaptive theme (blends with YouTube variables) ——— */
+/* ——— Ψ Playlist Master · adaptive theme (blends with YouTube variables) ——— */
 html { --ytpu-btn-h: 32px; }
 .ytpu-chipbar { display: flex; flex: 0.8; align-items: center; margin-left: 12px; flex-wrap: wrap; gap: 4px; }
 .ytpu-btn { display: inline-flex; align-items: center; height: var(--ytpu-btn-h); padding: 0 12px;
@@ -1604,7 +1725,7 @@ html { --ytpu-btn-h: 32px; }
 ${sharedPageCss(C, true)}
 `;
             return `
-/* ——— Ψ Playlist Unity · 3lectric-Glass theme (4NDR0666OS spec) ——— */
+/* ——— Ψ Playlist Master · 3lectric-Glass theme (4NDR0666OS spec) ——— */
 html { --ytpu-btn-h: 32px; }
 .ytpu-chipbar { display: flex; flex: 0.8; align-items: center; margin-left: 12px; flex-wrap: wrap; gap: 4px; }
 .ytpu-btn { display: inline-flex; align-items: center; height: var(--ytpu-btn-h); padding: 0 12px;
@@ -2149,8 +2270,8 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             // Header
             const header = DOMU.el('div', { class: 'header' }, {}, {}, {}, [
                 DOMU.el('div', { class: 'title' }, {}, {}, {}, [
-                    DOMU.el('div', { class: 't1' }, { textContent: 'PLAYLIST UNITY' }),
-                    DOMU.el('div', { class: 't2' }, { textContent: '4NDR0666 · 3LECTRIC GLASS' }),
+                    DOMU.el('div', { class: 't1' }, { textContent: 'PLAYLIST MASTER' }),
+				    DOMU.el('div', { class: 't2' }, { textContent: `v${CFG.SCRIPT_VERSION}`}),
                 ]),
                 DOMU.el('span', { class: 'acct', id: 'acct', title: 'Active account' }),
                 DOMU.el('span', { class: 'count', id: 'count' }),
@@ -2276,7 +2397,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
             const destpicker = DOMU.el('div', { class: 'destpicker', id: 'destpicker', style: 'display:none;' });
             const log = DOMU.el('div', { class: 'log', id: 'log' });
-            const hint = DOMU.el('div', { class: 'hint' }, { textContent: `Ψ v${CFG.SCRIPT_VERSION} · Alt+Shift+U/S/X · GOLDEN-UNIT SUPERSET` });
+            const hint = DOMU.el('div', { class: 'hint' }, { textContent: 'hotkeys -> Alt+Shift+U·S·X  · // Ψ 4ndr0tools' });
 
             panel.appendChild(badge);
             badge.appendChild(badgeCount);
@@ -2489,10 +2610,10 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function show() {
-            DECK.modal('Ψ SETTINGS — PLAYLIST UNITY', buildBody, [
+            DECK.modal('Ψ SETTINGS — PLAYLIST MASTER', buildBody, [
                 DOMU.el('button', { class: 'btn danger' }, { textContent: 'Reset all settings' }, {}, {
                     click: async () => {
-                        if (!confirm('Reset ALL Playlist Unity settings to defaults?')) return;
+                        if (!confirm('Reset ALL Playlist Master settings to defaults?')) return;
                         await STORE.reset();
                         THEME.apply();
                         BUS.emit('reset');
@@ -3696,7 +3817,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                     DECK.logMsg(`  → ${destId}`);
                     const r = await MUTATOR.addVideos(destId, videoIds, (p) => {
                         DECK.setProgress(p.applied / videoIds.length);
-                        DECK.elx.count.textContent = `${p.applied}/${videoIds.length}`;
+                        if (DECK.elx.count) DECK.elx.count.textContent = `${p.applied}/${videoIds.length}`;
                     });
                     if (r.failed.length > 0) destFailures.push({ destId, failed: r.failed.length });
                     DECK.logMsg(`  + added ${r.applied}, retried ${r.retried}, failed ${r.failed.length}`, r.failed.length ? 'warn' : 'ok');
@@ -3980,7 +4101,10 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             const items = document.querySelectorAll(
                 'ytd-rich-item-renderer, ytd-grid-video-renderer, ytd-video-renderer, yt-lockup-view-model',
             );
-            items.forEach((item) => {
+            // v1.6.0: chunked + yielding (SCHED) — same per-item work and
+            // guards; the subscriptions feed no longer absorbs this as one
+            // long synchronous task.
+            SCHED.sweep('quick.items', items, (item) => {
                 const anchor = item.querySelector('ytd-thumbnail, yt-thumbnail-view-model, #details #menu, #menu');
                 const target = anchor || item;
                 if (!target || target.querySelector('.ytpu-qp-add')) return;
@@ -4205,7 +4329,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 `yt-thumbnail-view-model:not([${PROCESSED_ATTR}])`,
                 `ytd-thumbnail:not([${PROCESSED_ATTR}])`,
             ].join(',');
-            document.querySelectorAll(sel).forEach(injectButtons);
+            SCHED.sweep('queue.thumbs', document.querySelectorAll(sel), injectButtons);
         }
 
         function start() {
@@ -4293,7 +4417,12 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         function start() {
             // v1.1.0: no boot-time early return — the observer callback
             // live-checks the playlistClose flag so Settings toggles need no reload.
-            const observer = new MutationObserver(() => {
+            // v1.6.0: this was the last raw un-throttled whole-document
+            // MutationObserver (two full-document queries per mutation batch —
+            // hundreds of batches/s during heavy-I/O churn). It now rides
+            // DOMU's debounced document observer: same guard logic, same
+            // re-add behavior, bounded 300 ms cadence.
+            DOMU.observeDocument(() => {
                 if (!STORE.data().playlistClose.enabled) return;
                 if (document.contains(button)) return;
                 const playlistHeader = document.querySelector([
@@ -4301,8 +4430,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                     '#player-playlist .playlist-header',
                 ].join(','));
                 if (playlistHeader) addButton(playlistHeader);
-            });
-            observer.observe(document.documentElement, { childList: true, subtree: true });
+            }, 300);
         }
 
         return { start };
@@ -4352,8 +4480,11 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
                 inserted: (rows) => rows.forEach(handleVideoInList),
             });
             // Initial sweep for already-rendered rows.
-            document.querySelectorAll('ytd-playlist-video-list-renderer ytd-playlist-video-renderer')
-                .forEach(handleVideoInList);
+            // v1.6.0: chunked + yielding (SCHED) — a 5000-row playlist's
+            // initial metadata pass no longer runs as one long task.
+            SCHED.sweep('metainfo.rows',
+                document.querySelectorAll('ytd-playlist-video-list-renderer ytd-playlist-video-renderer'),
+                handleVideoInList);
         }
 
         return { start };
@@ -4413,7 +4544,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             const browser = DOMU.el('div', { class: 'ytpu-huge-browser', 'data-list': list }, {}, {}, {}, [
                 DOMU.el('div', { class: 'title' }, { textContent: 'Ψ PLAYLIST BROWSER' }),
                 DOMU.el('div', { class: 'information' }, {
-                    textContent: 'YouTube could not render this playlist natively. Playlist Unity is browsing it through the InnerTube API — every item is here.',
+                    textContent: 'YouTube could not render this playlist natively. Playlist Master is browsing it through the InnerTube API — every item is here.',
                 }),
                 DOMU.el('div', { class: 'items' }, { textContent: 'Loading playlist…' }),
                 DOMU.el('div', { class: 'footer' }, { textContent: `list=${list}` }),
@@ -4627,7 +4758,16 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             if (activeShutdown) { activeShutdown(); activeShutdown = null; }
             container.setAttribute('ytpa-random', 'applied');
 
-            container.querySelector('#items').insertAdjacentElement('beforebegin', DOMU.el('div', { class: 'ytpu-random-notice' }, {}, {}, {}, [
+            // v1.6.0: the panel can exist before its #items host renders.
+            // v1.5.0 threw a TypeError here per 1 s tick (caught by safeWrap,
+            // but re-logged forever); now retire the marker and retry on the
+            // next tick until the items host appears.
+            const itemsHost = container.querySelector('#items');
+            if (!itemsHost) {
+                container.removeAttribute('ytpa-random');
+                return;
+            }
+            itemsHost.insertAdjacentElement('beforebegin', DOMU.el('div', { class: 'ytpu-random-notice' }, {}, {}, {}, [
                 document.createTextNode('This playlist is using random play. The videos will '),
                 DOMU.el('strong', {}, { textContent: 'not play in the order' }),
                 document.createTextNode(' listed here.'),
@@ -4885,7 +5025,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         function greet() {
             // One branded line per page load (YTPA Greeter, miniaturized).
             console.info(
-                `%cΨ PLAYLIST UNITY%c v${CFG.SCRIPT_VERSION} · 4NDR0666 · 3lectric-Glass · GUP v5.3 superset`,
+                `%cΨ PLAYLIST MASTER%c v${CFG.SCRIPT_VERSION} · 4NDR0666 · 3lectric-Glass · GUP v5.3 superset`,
                 'color:#00E5FF;font-weight:bold;font-size:14px',
                 'color:#67E8F9;font-size:11px',
             );
@@ -4944,7 +5084,7 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         function trackPageContext() {
             if (pageContextReady()) return;
             DECK.logMsg('YouTube API not visible yet — manager/export come online automatically', 'warn');
-            console.warn('[Ψ Playlist Unity] window.ytcfg is not yet visible from this userscript manager. The deck is fully mounted; API-backed features (bulk manager, snapshots, quick playlists) will activate automatically when the context appears.');
+            console.warn('[Ψ Playlist Master] window.ytcfg is not yet visible from this userscript manager. The deck is fully mounted; API-backed features (bulk manager, snapshots, quick playlists) will activate automatically when the context appears.');
             let tries = 0;
             const poll = setInterval(() => {
                 tries += 1;
@@ -4986,6 +5126,11 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         }
 
         function initialize() {
+            // v1.6.0: attach the global error/unhandledrejection shield
+            // FIRST — defined since v1.1.0 but never wired (grep-verified:
+            // its only two occurrences were definition + export), the
+            // documented crash-resilience capability never actually ran.
+            try { SAFETY.attachGlobalListener(); } catch (e) { LOG.debug('global shield attach failed:', e && e.message); }
             // Failsafe first (v1.2.0): the manager-menu rescue command must
             // exist even if every later step throws.
             try { MENU.set('rescue', 'Ψ Force show deck (Alt+Shift+X)', () => DECK.rescue()); }
