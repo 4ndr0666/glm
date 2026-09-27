@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         4ndr0tools - YouTube Playlist Master
 // @namespace    https://github.com/4ndr0666
-// @version      1.4.0
-// @description  Channel playlist buttons (All / Popular / Videos / Shorts / Streams / Members-only), Random play (prefer newest/oldest), reverse autoplay order, playlist autoplay toggle, duration sort, bulk copy/move/delete, JSON + plaintext export/import, snapshots with deleted-video detection, quick watch_videos playlists, queue & watch-later overlays, playlist close button, date/view metadata, episode auto-expand, huge-playlist browser, live settings (no reload), always-available Ψ deck, playlist row filter, duplicate finder & purge, global hotkeys (Alt+Shift+U/S/X), failsafe deck rescue, 404-proof navigation guards, Trusted-Types-immune rendering.
+// @version      1.5.0
+// @description  Channel playlist buttons (All / Popular / Videos / Shorts / Streams / Members-only), Random play (prefer newest/oldest), reverse autoplay order, playlist autoplay toggle, duration sort, bulk copy/move/delete, JSON + plaintext export/import, snapshots with deleted-video detection, quick watch_videos playlists, queue & watch-later overlays, playlist close button, date/view metadata, episode auto-expand, huge-playlist browser, live settings (no reload), always-available Ψ deck, playlist row filter, duplicate finder & purge, global hotkeys (Alt+Shift+U/S/X), failsafe deck rescue, 404-proof navigation guards, Trusted-Types-immune rendering, fully-visible fit-content modal dialogs.
 // @author       4ndr0666
 // @license      UNLICENSED REDTEAM ONLY
 // @match        https://*.youtube.com/*
@@ -21,34 +21,9 @@
 // ==/UserScript==
 
 /* ============================================================================
- * YOUTUBE PLAYLIST MASTER v1.2.0 — playlist suite for YouTube
+ *                           TROUBLESHOOTING
  * ============================================================================
  *
- * PARADIGM (GUP D1 — declared before any line of logic):
- *   Event-Driven Sandboxed Userscript — one module-scoped IIFE, zero global
- *   pollution, page UI injected through marked idempotent mount points, all
- *   volatile logic (network, DOM automation) routed through the shared kernel
- *   with hard timeouts, debounced observers and unconditional reclamation.
- *   No jQuery, no external @require, no external network dependency.
- *
- * COMPLIANCE:
- *   - Golden-Unit Protocol v5.3 — behavioral superset of the 16-script cohort
- *     in the /yt directory (see CREDITS). Zero placeholders, zero dead code,
- *     every unit complete and idempotent.
- *   - 4NDR0666OS 3lectric-Glass styling paradigm (resources/3lectric_6lass-spec.md)
- *     with the 4ndr0666 Ψ branding glyph (resources/4ndr0666_glyph.txt).
- *
- * STYLING: 3lectric-Glass — Matrix base rgb(10,19,26) at 4 glass levels
- * (0.95 header / 0.72 window / 0.65 menu / 0.55 panel), Electric Cyan #00E5FF
- * primary, #67E8F9 hover, Neon Pink #ff0055 destructive, JetBrains Mono data /
- * Orbitron display (declared with monospace fallbacks — no external font
- * loading, zero network), 150ms ease-in-out transitions, rectangular
- * brutalist buttons, cyan glow containment fields, 6px cyan scrollbars.
- *
- * USER GUIDE (full documentation: README.txt / README.md) — v1.3.0
- *   Install : a userscript manager (Tampermonkey / Violentmonkey /
- *             Greasemonkey 4) → create a new script → paste this entire
- *             file → save → hard-refresh YouTube (Ctrl+Shift+R).
  *   Deck    : the Ψ badge docks bottom-right on EVERY YouTube page; click
  *             it (or Alt+Shift+U) to expand the command panel.
  *   Hotkeys : Alt+Shift+U toggle deck · Alt+Shift+S settings ·
@@ -57,147 +32,21 @@
  *   Nothing appears? The F12 console must show the Ψ PLAYLIST UNITY
  *             banner; then run the manager menu command "Ψ Force show
  *             deck (Alt+Shift+X)".
- *   Repo    : github.com/4ndr0666/glm — the file is at /blob/main/
- *             youtubeplaylistmaster.user.js (a /tree/main/<file> URL is a
- *             directory route and returns GitHub's 404; the raw file is
- *             raw.githubusercontent.com/4ndr0666/glm/main/
- *             youtubeplaylistmaster.user.js).
  *
- * CHANGELOG v1.1.0 (GUP v5.3 superset of v1.0.0):
- *   - FIX: deck was invisible outside /playlist and /feed/subscriptions — the
- *     Ψ badge now docks on every YouTube surface (appearance.deckEverywhere,
- *     default on) while sections stay contextual.
- *   - FIX: modal action buttons (Settings "Done", diff "Close") were dead —
- *     unannotated modal actions now close their dialog.
- *   - FIX: copy/move bulk ops ran outside the UI lock — the lock now spans the
- *     destination picker's confirmed operation.
- *   - FIX: DOMADAPTER route handler read a fresh classify() lacking .reason,
- *     clearing selection on navigate-start contrary to intent.
- *   - FIX: RANDOM engine leaked its updateStorage/badge intervals when random
- *     mode exited (GUP D4 reclamation).
- *   - FIX: REVERSE miniplayer detection used a divergent attribute set; now
- *     reuses isMiniplayerActive(). Failsafe interval now honors the enabled
- *     flag and live toggles.
- *   - FIX: MEMBERSTAB crashed when the tab strip raced empty; re-arms on SPA
- *     channel entry and live-toggles.
- *   - FIX: SORTER crashed on rows without a #text timestamp; localized count
- *     text now parses by digit extraction.
- *   - FIX: EXPORTER DOM-fallback scroll loop is now attempt-bounded (GUP B.1).
- *   - FIX: PLAYER.redirect could emit list=null on mobile URLs.
- *   - FIX: PORTABILITY.exportPlaylist dead parameter removed (zero dead code).
- *   - FIX: @downloadURL/@updateURL now point at the real raw repo path; bare
- *     youtube.com domain added to @match.
- *   - ADD: live settings — every feature toggle takes effect immediately,
- *     no page reload required.
- *   - ADD: playlist row filter (title substring) in the manager section.
- *   - ADD: duplicate finder & keep-first purge for the current playlist.
- *   - ADD: exporter toggle row in Settings (flag existed but had no UI).
- *
- * CHANGELOG v1.2.0 (GUP v5.3 superset of v1.1.0):
- *   - FIX (CRITICAL): v1.0.0/v1.1.0 gated ALL UI mounting behind
- *     unsafeWindow.ytcfg ("PlaylistPlus boot pattern"). In manager sandboxes
- *     where page-context JS is not readable, the deck never appeared for 100
- *     seconds and then only "degraded". The Ψ deck now mounts immediately at
- *     DOM-ready; ytcfg availability is tracked as STATUS (deck log + bounded
- *     2-minute poll), never as a boot gate.
- *   - FIX: a throwing feature .start() aborted every later feature (single
- *     try/catch around the whole chain) — starts are now fault-isolated per
- *     module so one broken surface cannot take the rest down.
- *   - FIX: DECK.mount cached a detached root forever — if YouTube or another
- *     extension removed the deck node it could never return. mount() now
- *     detects detachment, resets its element registry and re-mounts; a 5 s
- *     watchdog re-mounts automatically; the selection-change adapter hook is
- *     registered exactly once across re-mounts.
- *   - ADD: §35A HOTKEYS — global Alt+Shift+U (toggle Ψ deck), Alt+Shift+S
- *     (settings), Alt+Shift+X (force re-show). Alt+Shift combos sit outside
- *     YouTube's own shortcut map; typing targets are exempt; live toggle in
- *     Settings (hotkeys.enabled, migration 3→4, default on).
- *   - ADD: failsafe "Ψ Force show deck (Alt+Shift+X)" manager menu command,
- *     registered before anything else in boot so it survives partial
- *     failures.
- *
- * CHANGELOG v1.3.0 (GUP v5.3 superset of v1.2.0) — navigation integrity:
- *   - FIX (critical, user-reported "revision causes a 404 error when
- *     trying to navigate"): every programmatic navigation now routes
- *     through a central NAV.safeNavigate/safeOpen integrity gate (§7). A
- *     malformed target — an undefined/garbage video or list id, a foreign
- *     host, an empty watch_videos set — is logged and dropped instead of
- *     navigating YouTube into a 404 page. (Static proof: the script
- *     contains zero auto-navigation on plain page loads; this closes every
- *     click-path and session-path that could 404.)
- *   - FIX: MENU "Uploader playlist (legacy view=57)" fired on channel HOME
- *     urls, where YouTube hard-404s /@handle?view=57. It now only
- *     navigates from channel tab urls (videos/shorts/streams/featured)
- *     and prints guidance everywhere else.
- *   - FIX: PLAYER.redirect never validated its ids — /watch?v=undefined
- *     was reachable via huge-browser rows for deleted entries and via the
- *     desktop fallback when the playlist panel is absent. Ids are now
- *     validated (11-char video ids, plausible list ids) before anything;
- *     the fallback URL is built with URLSearchParams instead of string
- *     concatenation.
- *   - FIX: huge-playlist browser renders entries without a valid video id
- *     as dimmed, non-navigable notes instead of clickable 404 links.
- *   - FIX: RANDOM play engine filters its localStorage candidate pool by
- *     valid video id; its row-bypass / exit-badge / reload navigations
- *     route through the safe gate.
- *   - FIX: quick-playlist "Open playlist" never exposes an empty
- *     watch_videos?video_ids= URL (an aux-click on it 404s); the anchor
- *     stays inert until the list is non-empty.
- *   - FIX: members-only tab opens its UUMO playlist through the safe gate.
- *
- * CHANGELOG v1.4.0 (GUP v5.3 superset of v1.3.0) — Trusted Types immunity:
- *   - FIX (critical, field-proven via youtubeplaylistmaster_debug.txt): on
- *     Trusted-Types-enforcing profiles (Chrome 138 field log) the deck never
- *     mounted — DOMParser.parseFromString is itself a Trusted Types sink
- *     and threw "This document requires 'TrustedHTML' assignment" inside
- *     GLYPH.node() at mount, plus 54 uncaught throws out of DOMU.svgEl()
- *     across feature paths. ALL SVG construction is now namespace-correct
- *     createElementNS (new DOMU.svg builder; GLYPH fully rebuilt); the
- *     script contains ZERO HTML-string sinks (no parseFromString, no
- *     innerHTML, no insertAdjacentHTML, no document.write) — Trusted-Types
- *     immune BY CONSTRUCTION, with no dependence on a policy exemption the
- *     host page could refuse.
- *   - FIX (cascade): DECK.mount committed its root node to the DOM before
- *     the panel was built — a construction throw left a live-but-empty
- *     #ytpu-deck node, which made root.isConnected true and silently
- *     defeated the idempotency guard, the 5 s watchdog AND the Alt+Shift+X
- *     rescue (all three see "connected" and skip the re-mount). mount() is
- *     now atomic: the whole deck is built into locals and module state is
- *     mutated only in the final commit phase; any throw leaves the deck
- *     unmounted-but-recoverable with every recovery path operational.
- *   - FIX: updateVisibility guards the element registry as well as the
- *     root — the field log shows the v1.3.0 cascade dying on elx.secManager
- *     after a failed mount left an empty registry behind.
- *   - FIX: deck log clearing used an innerHTML assignment — a TT sink under
- *     enforcement even for the empty string; now replaceChildren() with a
- *     legacy fallback.
- *   - FIX: watchdog re-mount failures were logged at debug level only
- *     (invisible in the field log while the deck stayed down all session);
- *     the first consecutive failure now escalates to error level with the
- *     retry cadence stated, then stays quiet so a persistent fault cannot
- *     flood the console.
- *   - DEL (authorized, zero-dead-code mandate): ENV.ttPolicy + ENV.setHTML
- *     — the TrustedTypes policy pair became dead code once the last HTML
- *     sink was eliminated; setHTML already had zero callers in v1.3.0.
  * ==========================================================================*/
 
 (function __ytpu_root__() {
     'use strict';
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §1 KERNEL — CONFIG                                               ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const CFG = {
         SCRIPT_NAME: 'Ψ Playlist Unity',
-        SCRIPT_VERSION: '1.4.0',
+        SCRIPT_VERSION: '1.5.0',
         STORAGE_KEY: 'ytpu.settings',
         SNAPSHOT_KEY: 'ytpu.snapshots',
-        SNAPSHOT_CAP: 20,             // FIFO cap for stored playlist snapshots
-        CHANNEL_CACHE_CAP: 64,        // FIFO cap for channelId lookups (GUP B.1)
-        LOG_RING_CAP: 100,            // deck log ring buffer size
+        SNAPSHOT_CAP: 20,
+        CHANNEL_CACHE_CAP: 64,
+        LOG_RING_CAP: 100,
 
-        // InnerTube client
         BATCH_SIZE: 100,
         MAX_BATCH_RETRIES: 3,
         PACE_MU_MS: 1200,
@@ -209,27 +58,20 @@
         BACKOFF_MAX_ATTEMPTS: 3,
         WARN_BULK_THRESHOLD: 500,
         FETCH_TIMEOUT_MS: 30000,
-        PAGE_FETCH_TIMEOUT_MS: 10000, // channelId page-probe fetches
-        MAX_PAGES: 200,               // pagination ceiling (runaway guard)
+        PAGE_FETCH_TIMEOUT_MS: 10000,
+        MAX_PAGES: 200,
 
-        // DOM automation
         OBSERVER_DEBOUNCE_MS: 400,
         MOBILE_POLL_MS: 1500,
-        MOBILE_POLL_MAX: 400,         // bounded idle ceiling; re-arms on activity
+        MOBILE_POLL_MAX: 400,
         WAIT_ELEMENT_TIMEOUT_MS: 15000,
 
-        // Reverse-order timing
         REVERSE_TIME_LEFT: 0.3,
         REVERSE_TIME_LEFT_MINI: 0.6,
 
-        // Random play
         RANDOM_MARK_WATCHED_AT: 0.9,
-        RANDOM_AUTOPLAY_AT_END: 3,    // seconds before end
+        RANDOM_AUTOPLAY_AT_END: 3,
     };
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §2 KERNEL — LOG                                                  ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const LOG = (() => {
         const enabled = () => !!STORE.data().debug;
@@ -242,15 +84,9 @@
         };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §3 KERNEL — SAFETY                                               ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const SAFETY = (() => {
         function handleError(e) { LOG.error(e); }
 
-        // Root-loop exception filter: only report rejections originating in
-        // this userscript's root frame (stack marker), never the host page's.
         function attachGlobalListener() {
             window.addEventListener('unhandledrejection', (event) => {
                 const e = event.reason || event;
@@ -281,10 +117,6 @@
         return { handleError, attachGlobalListener, safeWrap, safeTimeout, safeInterval, safeListen };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §4 KERNEL — EVENT BUS (Reset / refresh propagation)              ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const BUS = (() => {
         const listeners = new Map(); // topic -> Set<fn>
         return {
@@ -303,10 +135,6 @@
             },
         };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §5 KERNEL — PAGE ENVIRONMENT                                     ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const ENV = (() => {
         const pageWin = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
@@ -342,12 +170,7 @@
         return { pageWin, pageDoc, cfgGet, pageFetch, isMobile };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §6 KERNEL — DOM UTILITIES                                        ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const DOMU = (() => {
-        /** Compact element builder (absorbs YTPA $builder + PlaylistPlus CreateElement). */
         function el(tag, attrs = {}, props = {}, styles = {}, events = {}, children = []) {
             const node = document.createElement(tag);
             for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
@@ -518,10 +341,6 @@
         };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §7 KERNEL — SPA NAVIGATION ROUTER                                ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const NAV = (() => {
         function classify() {
             const path = location.pathname;
@@ -599,8 +418,6 @@
             return u;
         }
 
-        /** Same-tab navigation through the integrity gate. Returns true iff
-         *  the navigation was allowed to proceed. */
         function safeNavigate(target, label = 'script') {
             const u = vetUrl(target, label);
             if (!u) return false;
@@ -608,8 +425,6 @@
             return true;
         }
 
-        /** New-tab navigation through the integrity gate. Returns the opened
-         *  window, or null when blocked/unsupported. */
         function safeOpen(target, label = 'script') {
             const u = vetUrl(target, label);
             if (!u) return null;
@@ -671,10 +486,6 @@
         return { classify, channelTab, onRoute, fire, start, validVideoId, validListId, safeNavigate, safeOpen };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §8 KERNEL — PLAYER / VIDEO UTILITIES                             ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const PLAYER = (() => {
         const getPlayer = () => document.querySelector('#movie_player');
         const isAdPlaying = () => !!document.querySelector('.ad-interrupting');
@@ -698,7 +509,7 @@
             } catch (e) { return null; }
         }
 
-        /** YouTube client-side routing trick (from YouTube-Play-All redirect()):
+        /** YouTube client-side routing trick:
          *  a hidden playlist-panel anchor whose .data carries a watchEndpoint.
          *  v1.3.0: ids are validated up front (NAV.validVideoId/validListId)
          *  and every hard-navigate branch routes through NAV.safeNavigate —
@@ -749,10 +560,6 @@
 
         return { getPlayer, isAdPlaying, getVideoId, currentTime, getProgressState, redirect };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §9 KERNEL — CHANNEL ID RESOLUTION (multi-strategy, cached)       ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const CHANNEL = (() => {
         const idCache = new Map(); // videoUrl -> 'UC...' (FIFO-bounded, GUP B.1)
@@ -826,7 +633,6 @@
             } catch (e) { return null; }
         }
 
-        /** Resolve the full UC channel id for the current channel page. */
         async function resolve() {
             const direct = fromPageManager() || fromMetaTag();
             if (direct) return direct;
@@ -835,15 +641,10 @@
             return await fromFirstVideoPage();
         }
 
-        /** Strip the UC prefix → the raw id used by playlist prefixes (YAVP). */
         const bare = (ucId) => (ucId ? ucId.substring(2) : null);
 
         return { resolve, bare };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §10 STORE — settings (defaults + migrations + legacy import)     ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const STORE = (() => {
         const DEFAULTS = {
@@ -890,7 +691,6 @@
             catch (e) { return JSON.parse(JSON.stringify(obj)); }
         }
 
-        // ---- migration chain (YTPA SettingsStorage pattern; one-way, frozen inputs) ----
         const migrations = [
             (previous) => clone(DEFAULTS),                                                                 // 0 -> 1: birth
             (previous) => deepMerge(clone(previous), { data: { exporter: { getVideoDuration: false, getVideoIndex: false } } }), // 1 -> 2
@@ -910,20 +710,16 @@
             return current;
         }
 
-        // ---- one-time legacy import  ----
         function importLegacy() {
             try {
-                // YouTube-Playlist-Autoplay-Button stored its status in localStorage.
                 const lsAuto = localStorage.getItem('YouTubePreventPlaylistAutoplayStatus');
                 if (lsAuto !== null) {
                     DEFAULTS.data.autoplay.active = lsAuto === 'true';
                 }
-                // Play-reverse-order stored its toggle in a cookie.
                 const m = document.cookie.match(/(?:^|;\s*)pytplir_playPrevious=([^;]+)/);
                 if (m) {
                     DEFAULTS.data.reverseOrder.active = m[1].toLowerCase() === 'true';
                 }
-                // YAVP kept its toggles under plain GM keys; adopt them if present.
                 const yavpPlayNext = GM_getValue && GM_getValue('playNext', null);
                 if (yavpPlayNext !== null && typeof yavpPlayNext === 'boolean') {
                     DEFAULTS.data.channelButtons.playNext = yavpPlayNext;
@@ -932,7 +728,6 @@
                 if (yavpNewTabs !== null && typeof yavpNewTabs === 'boolean') {
                     DEFAULTS.data.channelButtons.newTabs = yavpNewTabs;
                 }
-                // Export-plaintext kept GM keys getVideoTitle/getVideoChannel/getVideoURL/videoListSeperator.
                 for (const [gmKey, path] of [
                     ['getVideoTitle', ['exporter', 'getVideoTitle']],
                     ['getVideoChannel', ['exporter', 'getVideoChannel']],
@@ -976,7 +771,6 @@
             return cache.data;
         }
 
-        /** Patch a settings subtree: STORE.patch({ sort: { mode: 'desc' } }) */
         function patch(partial) {
             cache.data = deepMerge(cache.data, partial);
             save();
@@ -994,10 +788,6 @@
         return { data, patch, reset, load };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §11 STORE — playlist snapshots                                   ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const SNAPSHOTS = (() => {
         function all() {
             try {
@@ -1013,7 +803,6 @@
                 itemCount: bundle.playlists[0].items.length,
                 bundle,
             };
-            // FIFO eviction — oldest snapshot beyond the cap is dropped (GUP B.1).
             const keys = Object.keys(map);
             if (keys.length > CFG.SNAPSHOT_CAP) {
                 keys.sort((a, b) => (map[a].savedAt || '').localeCompare(map[b].savedAt || ''));
@@ -1049,10 +838,6 @@
 
         return { all, put, get, diff };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §12 INNERTUBE — auth, pacing, HTTP client                        ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const AUTH = (() => {
         let sapisid = null;
@@ -1256,10 +1041,6 @@
         return { call, browse, playlistEdit, playlistCreate, available };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §13 READER — paginated playlist reads                            ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const READER = (() => {
         function extractItems(renderers) {
             const items = [];
@@ -1392,10 +1173,6 @@
         return { loadPlaylist, loadOwnedPlaylists };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §14 MUTATOR — verified batched playlist edits                    ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const MUTATOR = (() => {
         async function addVideos(playlistId, videoIds, onProgress) {
             return batchedEdit(playlistId, videoIds.map((v) => ({
@@ -1497,10 +1274,6 @@
         return { addVideos, removeVideos };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §15 PORTABILITY — JSON bundles                                   ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const PORTABILITY = (() => {
         async function exportPlaylist(playlistId) {
             const { header, items } = await READER.loadPlaylist(playlistId);
@@ -1577,10 +1350,6 @@
 
         return { exportPlaylist, importIntoPlaylist, downloadJSON, downloadText, readFile };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §16 DOM ADAPTER — playlist-page rows & selection model            ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const DOMADAPTER = (() => {
         let observer = null;
@@ -1726,10 +1495,6 @@
         };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §17 GLYPH — the 4ndr0666 Ψ branding mark                          ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const GLYPH = (() => {
         // v1.4.0: rebuilt via namespace-correct createElementNS (DOMU.svg).
         // The previous DOMParser/parseFromString construction was a Trusted
@@ -1799,10 +1564,6 @@
 
         return { node, inline24 };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §18 THEME — 3lectric-Glass (4NDR0666OS spec, web translation)    ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const THEME = (() => {
         // Palette constants (spec §2.1)
@@ -2022,12 +1783,13 @@ body:has(.ytpu-huge-browser) .ytp-next-button.ytp-button:not([ytpu-huge="applied
             return `
 :host { all: initial; }
 * { box-sizing: border-box; }
-.panel, dialog, .modal-card {
+.panel, .modal-card {
   font: 13px/1.45 ${s.mono}; color: ${s.cyan};
   background: ${s.L.window}; border: 1px solid ${s.border.subtle};
-  box-shadow: ${s.glow.out}; width: 340px; max-height: 72vh;
+  box-shadow: ${s.glow.out};
   display: flex; flex-direction: column; overflow: hidden;
   transition: ${s.speed}; }
+.panel { width: 340px; max-height: 72vh; }
 .panel.collapsed { width: 52px; height: 52px; border-radius: 0; align-items: center;
   justify-content: center; cursor: pointer; background: ${s.L.header}; }
 .panel.collapsed > *:not(.badge) { display: none !important; }
@@ -2114,7 +1876,8 @@ input[type="file"] { display: none; }
 .log-warn { color: #fd7; }
 .log-err { color: #f77; }
 .hint { font-size: 10px; color: rgba(0, 229, 255, 0.55); padding: 4px 12px; letter-spacing: 0.1em; }
-dialog { border: none; }
+dialog { border: none; padding: 0; background: none; box-shadow: none;
+  width: fit-content; max-width: 94vw; }
 dialog::backdrop { background: rgba(0, 0, 0, 0.72); }
 dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 .modal-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px;
@@ -2145,10 +1908,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         return { C, pageCss, deckCss, apply };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §19 DECK — Shadow DOM command center (3lectric-Glass)            ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const DECK = (() => {
         let root = null;
@@ -2320,11 +2079,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
             return m ? m[0] : null;
         }
 
-        // ---- generic modal (used by exporter & snapshot diff) ----
-        // Action buttons close their dialog after their own handler runs,
-        // unless annotated data-keep-open (e.g. Get list / Copy / Download
-        // must leave the plaintext dialog open). v1.0.0 shipped dead
-        // "Done"/"Close" buttons with no handler at all.
         function modal(title, buildBody, actions = []) {
             const dlg = document.createElement('dialog');
             const card = DOMU.el('div', { class: 'modal-card' });
@@ -2630,10 +2384,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §20 SETTINGS DIALOG — 3lectric-Glass <dialog>                    ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const SETTINGS = (() => {
         function toggleRow(label, get, set) {
             const input = DOMU.el('input', { type: 'checkbox' }, { checked: !!get() });
@@ -2755,10 +2505,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         return { show };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §21 F01 — CHANNEL PLAYLIST BUTTONS                               ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const CHBTNS = (() => {
         let lastChannelId = null;
@@ -3011,10 +2757,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         return { start, render, remove, listUrl };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §22 F01b — MEMBERS-ONLY TAB                                      ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const MEMBERSTAB = (() => {
         let button = null;
         let chId = null;
@@ -3090,10 +2832,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         return { start };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §23 F02 — REVERSE AUTOPLAY ORDER                                 ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const REVERSE = (() => {
         const selectors = {
@@ -3301,10 +3039,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         return { start };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §24 F03 — PLAYLIST AUTOPLAY TOGGLE                               ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const AUTOPLAY = (() => {
         let navigateStatus = -1;
         let fCounter = 0;
@@ -3442,10 +3176,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         return { start, setAssociatedAutoplay };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §25 F04 — SORT PLAYLIST BY DURATION                              ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const SORTER = (() => {
         let stopSort = false;
@@ -3636,10 +3366,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         return { activateSort, stop, start };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §26 F05 — EXPORTER: plaintext + snapshot/check                   ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const EXPORTER = (() => {
         // ---- playlist item access: InnerTube primary, DOM fallback ----
@@ -3869,10 +3595,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         return { openPlaintextDialog, doSnapshot, doCheck, loadItems, start };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §27 F06 — BULK MANAGER                                           ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const MANAGER = (() => {
         /** Resolve one setVideoId per selected row, preserving duplicates:
@@ -4205,10 +3927,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         return { runBulkOp, doDelete, doExport, doImport, doDupes, resolveSetVideoIds, start };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §28 F07 — QUICK PLAYLIST                                         ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const QUICK = (() => {
         const videoIds = []; // ordered, deduped
         let observer = null;
@@ -4298,10 +4016,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         return { videoIds, clear, start };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §29 F08 — QUEUE & WATCH-LATER OVERLAYS                           ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const QUEUE = (() => {
         const PROCESSED_ATTR = 'data-ytpu-queue';
@@ -4503,10 +4217,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         return { start };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §30 F09 — PLAYLIST CLOSE                                         ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const CLOSE = (() => {
         let button = null;
 
@@ -4598,10 +4308,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         return { start };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §31 F10 — DATE/VIEWS METADATA                                    ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const METAINFO = (() => {
         function handleVideoInList(rowEl) {
             if (!STORE.data().metaInfo.enabled) return; // v1.1.0: live toggle
@@ -4653,10 +4359,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         return { start };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §32 F11 — EPISODE AUTO-EXPAND                                    ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const EPISODE = (() => {
         function expand() {
             if (!STORE.data().episodeExpand.enabled) return; // v1.1.0: live toggle
@@ -4674,10 +4376,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         return { start };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §33 F12 — HUGE PLAYLIST BROWSER                                  ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const HUGE = (() => {
         let nextButtonInterval = null;
@@ -4817,10 +4515,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         return { start };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §34 F13 — RANDOM PLAY ENGINE                                     ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const RANDOM = (() => {
         const storagePrefix = 'ytpa-random-'; // same key format — YTPA users keep their state
@@ -5065,10 +4759,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
         return { start };
     })();
 
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §35 MENU COMMANDS — GM command palette (contextual lifecycle)    ║
-    // ╚══════════════════════════════════════════════════════════════════╝
-
     const MENU = (() => {
         const registered = new Map(); // key -> menu id
 
@@ -5187,10 +4877,6 @@ dialog .modal-card { width: min(560px, 92vw); max-height: 84vh; }
 
         return { start };
     })();
-
-    // ╔══════════════════════════════════════════════════════════════════╗
-    // ║ §36 BOOT — idempotent initialization                            ║
-    // ╚══════════════════════════════════════════════════════════════════╝
 
     const BOOT = (() => {
         let started = false;
