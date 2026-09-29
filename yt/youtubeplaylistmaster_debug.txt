@@ -1,0 +1,546 @@
+10:46:10.691 4ndr0tools - Counter-survillance.user.js:531  [4NDR0TOOLS] Initialization complete. Core shielded. 
+10:46:10.819 @AriDugarte:17 Request was blocked by DevTools: "https://www.youtube.com/s/desktop/af0a3c1e/jsbin/custom-elements-es5-adapter.vflset/custom-elements-es5-adapter.js"
+10:46:13.725 m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:13022 LegacyDataMixin will be applied to all legacy elements.
+Set `_legacyUndefinedCheck: true` on element class to enable.
+10:46:14.160 4ndr0tools - Counter-survillance.user.js:151  [💀] XHR NULLIFIED: //googleads.g.doubleclick.net/pagead/id
+10:46:14.556 VM585:134 Blocked script execution in 'about:blank' because the document's frame is sandboxed and the 'allow-scripts' permission is not set.
+reflect @ VM585:134
+(anonymous) @ VM585:1185
+apply @ VM585:167
+reflect @ VM585:134
+(anonymous) @ VM585:1185
+apply @ VM585:167
+reflect @ VM585:134
+(anonymous) @ VM585:1185
+apply @ VM585:167
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3664
+V.init @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:17490
+eSw.init @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:17495
+_.a.init @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:17513
+qB.attached @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:31666
+N1c.c.attached @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:2031
+b.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9023
+_.t0 @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9085
+window.Polymer @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8746
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:2042
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3458
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3486
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:40636
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:43050
+10:46:15.052 4ndr0tools - Maximize_Any_Media.user.js:190 [2026-09-27 10:46:15][Maximize Video] > 4ndr0tools - Maximize_Any_Media v7.0.0-Ψ · 3lectric-Glass · Ψ superset engine online
+10:46:15.057 4ndr0tools - Maximize_Any_Media.user.js:190 [2026-09-27 10:46:15][Maximize Video] > Ready
+10:46:15.219 4ndr0tools - YouTube Playlist Master.user.js:5027 Ψ PLAYLIST MASTER v1.6.0 · 4NDR0666 · 3lectric-Glass · GUP v5.3 superset
+10:46:15.228 4ndr0tools - YouTube Playlist Master.user.js:130 [Ψ Playlist Master] mounted · v1.6.0
+10:46:15.370 VM585:1026 Request was blocked by DevTools: "data:application/json;base64,eyJyZXNwb25zZUNvbnRleHQiOnsic2VydmljZVRyYWNraW5nUGFyYW1zIjpbeyJzZXJ2aWNlIjoiR0ZFRURCQUNLIiwicGFyYW1zIjpbeyJrZXkiOiJrYyIsInZhbHVlIjoiNjYifSx7ImtleSI6ImN3IiwidmFsdWUiOiJzdCJ9LHsia2V5IjoiemIiLCJ2YWx1ZSI6Inh6In0seyJrZXkiOiJ6bCIsInZhbHVlIjoiMTYifSx7ImtleSI6InBmIiwidmFsdWUiOiJzeSJ9XX0seyJzZXJ2aWNlIjoiYmgiLCJwYXJhbXMiOlt7ImtleSI6ImlwIiwidmFsdWUiOiI1NCJ9LHsia2V5IjoidGIiLCJ2YWx1ZSI6ImR2In0seyJrZXkiOiJwaSIsInZhbHVlIjoicG4ifSx7ImtleSI6ImZnIiwidmFsdWUiOiIzNSJ9LHsia2V5Ijoid20iLCJ2YWx1ZSI6InZvIn1dfSx7InNlcnZpY2UiOiJmcCIsInBhcmFtcyI6W3sia2V5IjoiaHciLCJ2YWx1ZSI6IjkxIn1dfSx7InNlcnZpY2UiOiJyayIsInBhcmFtcyI6W3sia2V5IjoicGUiLCJ2YWx1ZSI6InNmIn0seyJrZXkiOiJydiIsInZhbHVlIjoiam4ifSx7ImtleSI6ImF3IiwidmFsdWUiOiJwdyJ9XX1dLCJtYXhBZ2VTZWNvbmRzIjo4NywibWFpbkFwcFdlYlJlc3BvbnNlQ29udGV4dCI6eyJsb2dnZWRPdXQiOjQzLCJ0cmFja2luZ1BhcmFtIjoiZGQiLCJkYXRhc3luY0lkIjoieHAifSwid2ViUmVzcG9uc2VDb250ZXh0RXh0ZW5zaW9uRGF0YSI6eyJoYXNEZWNvcmF0ZWQiOjc1fX0sInBsYXlhYmlsaXR5U3RhdHVzIjp7InN0YXR1cyI6ImJ5IiwicGxheWFibGVJbkVtYmVkIjoyLCJtaW5pcGxheWVyIjp7Im1pbmlwbGF5ZXJSZW5kZXJlciI6eyJwbGF5YmFja01vZGUiOiJ0aiJ9fSwib2ZmbGluZWFiaWxpdHkiOnsiYnV0dG9uUmVuZGVyZXIiOnsic2VydmljZUVuZHBvaW50Ijp7ImNsaWNrVHJhY2tpbmdQYXJhbXMiOiJweiIsInlwY0dldE9mZmxpbmVVcHNlbGxFbmRwb2ludCI6eyJwYXJhbXMiOiJ4bSJ9fSwidHJhY2tpbmdQYXJhbXMiOiJwcSJ9fSwiY29udGV4dFBhcmFtcyI6Imx1In0sInN0cmVhbWluZ0RhdGEiOnsiZXhwaXJlc0luU2Vjb25kcyI6IjUzIiwiZm9ybWF0cyI6W3siaXRhZyI6ODAsInVybCI6Imh0dHBzOi8vcnIzLS0tc24tbjR2N3NuczcuZ29vZ2xldmlkZW8uY29tL3ZpZGVvcGxheWJhY2s/ZXhwaXJlPTE2OTcyNjc2NTQmc291cmNlPXlvdXR1YmUmcmVxdWlyZXNzbD15ZXMiLCJtaW1lVHlwZSI6InZpZGVvL3dlYm07IGNvZGVjcz1cInZwOVwiIiwiYml0cmF0ZSI6ODgsIndpZHRoIjo5NiwiaGVpZ2h0Ijo2NSwibGFzdE1vZGlmaWVkIjoiMTY2NTI2MzEzMjE4NzUzMSIsImNvbnRlbnRMZW5ndGgiOiIxNyIsInF1YWxpdHkiOiJyYyIsImZwcyI6OCwicXVhbGl0eUxhYmVsIjoiYWIiLCJwcm9qZWN0aW9uVHlwZSI6ImJ5IiwiYXZlcmFnZUJpdHJhdGUiOjUwLCJhdWRpb1F1YWxpdHkiOiJ0aCIsImFwcHJveER1cmF0aW9uTXMiOiI4NiIsImF1ZGlvU2FtcGxlUmF0ZSI6Ijg4IiwiYXVkaW9DaGFubmVscyI6MzR9LHsiaXRhZyI6OTUsInVybCI6ImhzIiwibWltZVR5cGUiOiJubSIsImJpdHJhdGUiOjU2LCJ3aWR0aCI6MTMsImhlaWdodCI6MTQsImxhc3RNb2RpZmllZCI6IjEwIiwicXVhbGl0eSI6ImZ1IiwiZnBzIjo1NCwicXVhbGl0eUxhYmVsIjoieWoiLCJwcm9qZWN0aW9uVHlwZSI6Ind1IiwiYXVkaW9RdWFsaXR5IjoidHUiLCJhcHByb3hEdXJhdGlvbk1zIjoiNTEiLCJhdWRpb1NhbXBsZVJhdGUiOiI4NyIsImF1ZGlvQ2hhbm5lbHMiOjQ0fV0sImFkYXB0aXZlRm9ybWF0cyI6W3siaXRhZyI6NTAsInVybCI6ImZ1IiwibWltZVR5cGUiOiJ1eiIsImJpdHJhdGUiOjgwLCJ3aWR0aCI6ODAsImhlaWdodCI6ODUsImluaXRSYW5nZSI6eyJzdGFydCI6IjE2IiwiZW5kIjoiNzEifSwiaW5kZXhSYW5nZSI6eyJzdGFydCI6IjEiLCJlbmQiOiIyNiJ9LCJsYXN0TW9kaWZpZWQiOiI3MCIsImNvbnRlbnRMZW5ndGgiOiI2NiIsInF1YWxpdHkiOiJjeCIsImZwcyI6NjEsInF1YWxpdHlMYWJlbCI6Inh0IiwicHJvamVjdGlvblR5cGUiOiJwZSIsImF2ZXJhZ2VCaXRyYXRlIjo2OCwiYXBwcm94RHVyYXRpb25NcyI6IjEifSx7Iml0YWciOjc3LCJ1cmwiOiJyaiIsIm1pbWVUeXBlIjoibGgiLCJiaXRyYXRlIjoxNiwid2lkdGgiOjE3LCJoZWlnaHQiOjQ3LCJpbml0UmFuZ2UiOnsic3RhcnQiOiI1MSIsImVuZCI6IjQ0In0sImluZGV4UmFuZ2UiOnsic3RhcnQiOiI4NyIsImVuZCI6IjYxIn0sImxhc3RNb2RpZmllZCI6IjEzIiwiY29udGVudExlbmd0aCI6IjIxIiwicXVhbGl0eSI6ImllIiwiZnBzIjoyMywicXVhbGl0eUxhYmVsIjoiaWciLCJwcm9qZWN0aW9uVHlwZSI6ImJsIiwiYXZlcmFnZUJpdHJhdGUiOjE2LCJjb2xvckluZm8iOnsicHJpbWFyaWVzIjoiZXQiLCJ0cmFuc2ZlckNoYXJhY3RlcmlzdGljcyI6Inp1IiwibWF0cml4Q29lZmZpY2llbnRzIjoib2QifSwiYXBwcm94RHVyYXRpb25NcyI6IjU5In0seyJpdGFnIjo3LCJ1cmwiOiJmYyIsIm1pbWVUeXBlIjoiZ3IiLCJiaXRyYXRlIjo3MSwid2lkdGgiOjExLCJoZWlnaHQiOjMsImluaXRSYW5nZSI6eyJzdGFydCI6IjEwMCIsImVuZCI6IjcifSwiaW5kZXhSYW5nZSI6eyJzdGFydCI6IjM2IiwiZW5kIjoiOTgifSwibGFzdE1vZGlmaWVkIjoiODgiLCJjb250ZW50TGVuZ3RoIjoiNzciLCJxdWFsaXR5IjoicmIiLCJmcHMiOjQ2LCJxdWFsaXR5TGFiZWwiOiJncSIsInByb2plY3Rpb25UeXBlIjoibGQiLCJhdmVyYWdlQml0cmF0ZSI6OTksImNvbG9ySW5mbyI6eyJwcmltYXJpZXMiOiJ4ZCIsInRyYW5zZmVyQ2hhcmFjdGVyaXN0aWNzIjoidXUiLCJtYXRyaXhDb2VmZmljaWVudHMiOiJ6YyJ9LCJhcHByb3hEdXJhdGlvbk1zIjoiNDQifSx7Iml0YWciOjEwLCJ1cmwiOiJrbCIsIm1pbWVUeXBlIjoid2IiLCJiaXRyYXRlIjo1MSwid2lkdGgiOjY5LCJoZWlnaHQiOjMsImluaXRSYW5nZSI6eyJzdGFydCI6IjkyIiwiZW5kIjoiNzkifSwiaW5kZXhSYW5nZSI6eyJzdGFydCI6IjQyIiwiZW5kIjoiNzIifSwibGFzdE1vZGlmaWVkIjoiOTkiLCJjb250ZW50TGVuZ3RoIjoiNiIsInF1YWxpdHkiOiJlZSIsImZwcyI6NDAsInF1YWxpdHlMYWJlbCI6ImVtIiwicHJvamVjdGlvblR5cGUiOiJ3eiIsImF2ZXJhZ2VCaXRyYXRlIjo0OCwiYXBwcm94RHVyYXRpb25NcyI6Ijg2In0seyJpdGFnIjo0NCwidXJsIjoiaHAiLCJtaW1lVHlwZSI6ImtxIiwiYml0cmF0ZSI6ODQsIndpZHRoIjo1MywiaGVpZ2h0IjoyMiwiaW5pdFJhbmdlIjp7InN0YXJ0IjoiNDgiLCJlbmQiOiI1MSJ9LCJpbmRleFJhbmdlIjp7InN0YXJ0IjoiNTQiLCJlbmQiOiI0NCJ9LCJsYXN0TW9kaWZpZWQiOiIyNSIsImNvbnRlbnRMZW5ndGgiOiI0NyIsInF1YWxpdHkiOiJ4eSIsImZwcyI6MTEsInF1YWxpdHlMYWJlbCI6InpsIiwicHJvamVjdGlvblR5cGUiOiJ6YSIsImF2ZXJhZ2VCaXRyYXRlIjo5NSwiY29sb3JJbmZvIjp7InByaW1hcmllcyI6Im90IiwidHJhbnNmZXJDaGFyYWN0ZXJpc3RpY3MiOiJhdiIsIm1hdHJpeENvZWZmaWNpZW50cyI6Im93In0sImFwcHJveER1cmF0aW9uTXMiOiI4NSJ9LHsiaXRhZyI6MjAsInVybCI6ImRpIiwibWltZVR5cGUiOiJuYyIsImJpdHJhdGUiOjE1LCJ3aWR0aCI6MTksImhlaWdodCI6OTIsImluaXRSYW5nZSI6eyJzdGFydCI6IjgyIiwiZW5kIjoiNTgifSwiaW5kZXhSYW5nZSI6eyJzdGFydCI6IjgwIiwiZW5kIjoiMzcifSwibGFzdE1vZGlmaWVkIjoiNDYiLCJjb250ZW50TGVuZ3RoIjoiNDAiLCJxdWFsaXR5Ijoid28iLCJmc
+applyHandler @ VM585:1026
+apply @ VM585:1133
+apply @ VM585:1133
+apply @ VM585:1133
+apply @ VM585:1133
+applyHandler @ VM585:1026
+applyHandler @ VM585:1026
+apply @ 4ndr0tools - Counter-survillance.user.js:133
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3194
+Ko @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5250
+next @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5251
+V @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5256
+Promise.then
+O @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+Promise.then
+O @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+Promise.then
+O @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+Promise.then
+O @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5259
+bFZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+_.z @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5260
+gfI @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3189
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3168
+Ko @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5250
+next @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5251
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5259
+bFZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+_.z @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5260
+_.pjI @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3168
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3173
+Ko @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5250
+next @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5251
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5259
+bFZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+_.z @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5260
+JGj @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3173
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3260
+Ko @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5250
+next @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5251
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5259
+bFZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+_.z @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5260
+oEe @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3260
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3259
+Ko @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5250
+next @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5251
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5259
+bFZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+_.z @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5260
+YWx @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3259
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:26735
+J @ scheduler.js:33
+Q @ scheduler.js:42
+f.L @ scheduler.js:38
+(anonymous) @ web-animations-next-lite.min.js:96
+requestAnimationFrame
+window.requestAnimationFrame @ web-animations-next-lite.min.js:96
+f.start @ scheduler.js:43
+K @ scheduler.js:29
+(anonymous) @ scheduler.js:48
+setTimeout
+apply @ VM585:1392
+ka @ scheduler.js:48
+GY.addJob @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:7980
+QP.parkOrScheduleJob @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:14955
+_.O6Y @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:26599
+jQr @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:29111
+_.a.registerWithViewTransitionManager @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:39476
+_.a.attached @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:39448
+N1c.c.attached @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:2031
+b.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9023
+e.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:15391
+_.Ey @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:2609
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3660
+_.I5 @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1181
+KP @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3660
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3663
+k.Lb @ webcomponents-sd.js:114
+k.ab @ webcomponents-sd.js:112
+k._renderSelf @ webcomponents-sd.js:109
+k.Y @ webcomponents-sd.js:108
+(anonymous) @ webcomponents-sd.js:107
+Fa @ webcomponents-sd.js:23
+Bb @ webcomponents-sd.js:47
+k.dispatchEvent @ webcomponents-sd.js:123
+b.fire @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9043
+resetLayout @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:30429
+Vz2 @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1912
+qgj @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1895
+b._propertiesChanged @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8653
+V._flushProperties @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8575
+b._invalidateProperties @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8645
+b._setProperty @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8644
+e.<computed> @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8669
+_resetPosition @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:30413
+Vz2 @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1912
+qgj @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1895
+b._propertiesChanged @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8653
+V._flushProperties @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8575
+b.ready @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8651
+b.ready @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8714
+b.ready @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8963
+b.ready @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9032
+N1c.c.ready @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:2030
+V._enableProperties @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8574
+b._enableProperties @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9021
+c.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8594
+b.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8713
+b.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8964
+b.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9023
+reflect @ VM585:134
+(anonymous) @ VM585:1185
+apply @ VM585:167
+reflect @ VM585:134
+(anonymous) @ VM585:1185
+apply @ VM585:167
+reflect @ VM585:134
+(anonymous) @ VM585:1185
+apply @ VM585:167
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3664
+attachShadow @ webcomponents-sd.js:96
+k.attachShadow @ webcomponents-sd.js:124
+b._attachDom @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8716
+b._readyClients @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8715
+b._flushClients @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8647
+b._propertiesChanged @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8653
+V._flushProperties @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8575
+b.ready @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8651
+b.ready @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8714
+b.ready @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8963
+b.ready @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9032
+N1c.c.ready @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:2030
+V._enableProperties @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8574
+b._enableProperties @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9021
+c.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8594
+b.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8713
+b.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8964
+b.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9023
+_.t0 @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9085
+window.Polymer @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8746
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:2042
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3458
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3486
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:40636
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:43050
+10:46:15.850 about:blank:1 Blocked script execution in 'about:blank' because the document's frame is sandboxed and the 'allow-scripts' permission is not set.
+10:46:16.075 VM585:134  POST https://www.youtube.com/youtubei/v1/log_event?alt=json net::ERR_BLOCKED_BY_CLIENT
+reflect @ VM585:134
+(anonymous) @ VM585:795
+apply @ VM585:167
+send @ VM585:1612
+send @ VM585:1612
+send @ VM585:1612
+send @ VM585:1612
+send @ VM585:1612
+send @ VM585:1612
+targetWindow.XMLHttpRequest.send @ 4ndr0tools - Counter-survillance.user.js:165
+hsj @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1450
+_.sn @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1465
+TzZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1652
+ti2 @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1692
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8201
+Ko @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5250
+next @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5251
+V @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5256
+Promise.then
+O @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5259
+bFZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+_.z @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5260
+_.a.immediateSend @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8200
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8198
+Ko @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5250
+next @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5251
+V @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5256
+Promise.then
+O @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5259
+bFZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+_.z @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5260
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8198
+J @ scheduler.js:33
+Q @ scheduler.js:42
+f.L @ scheduler.js:38
+(anonymous) @ web-animations-next-lite.min.js:96
+requestAnimationFrame
+window.requestAnimationFrame @ web-animations-next-lite.min.js:96
+f.start @ scheduler.js:43
+K @ scheduler.js:29
+(anonymous) @ scheduler.js:48
+setTimeout
+apply @ VM585:1392
+ka @ scheduler.js:48
+GY.addJob @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:7980
+QP.parkOrScheduleJob @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:14955
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:40500
+setTimeout
+apply @ VM585:1392
+_.a.attached @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:40500
+N1c.c.attached @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:2031
+b.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9023
+_.t0 @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9085
+window.Polymer @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8746
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:2042
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3458
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3486
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:40636
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:43050
+10:46:16.122 @AriDugarte:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+10:46:16.161 generate_204?lGoaqA:1  GET https://www.youtube.com/generate_204?lGoaqA net::ERR_BLOCKED_BY_CLIENT
+Image
+eval @ VM796:1
+ab @ VM831:1
+AV @ VM797:1
+eval @ @AriDugarte:1
+il @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+m @ @AriDugarte:1
+10:46:16.265 @AriDugarte:1 [GroupMarkerNotSet(crbug.com/242999)!:A0301C00B4090000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader (about:flags#enable-unsafe-swiftshader) flag to opt in to lower security guarantees for trusted content.
+10:46:16.357 VM585:134  POST https://www.youtube.com/youtubei/v1/log_event?alt=json net::ERR_BLOCKED_BY_CLIENT
+reflect @ VM585:134
+(anonymous) @ VM585:795
+apply @ VM585:167
+send @ VM585:1612
+send @ VM585:1612
+send @ VM585:1612
+send @ VM585:1612
+send @ VM585:1612
+send @ VM585:1612
+targetWindow.XMLHttpRequest.send @ 4ndr0tools - Counter-survillance.user.js:165
+hsj @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1450
+_.sn @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1465
+TzZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1652
+ti2 @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:1692
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8201
+Ko @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5250
+next @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5251
+V @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5256
+Promise.then
+O @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5259
+bFZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+_.z @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5260
+_.a.immediateSend @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8200
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8198
+Ko @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5250
+next @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5251
+V @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5256
+Promise.then
+O @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5259
+bFZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+_.z @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5260
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8198
+J @ scheduler.js:33
+Q @ scheduler.js:42
+f.L @ scheduler.js:38
+(anonymous) @ web-animations-next-lite.min.js:96
+requestAnimationFrame
+window.requestAnimationFrame @ web-animations-next-lite.min.js:96
+f.start @ scheduler.js:43
+K @ scheduler.js:29
+(anonymous) @ scheduler.js:48
+setTimeout
+apply @ VM585:1392
+ka @ scheduler.js:48
+GY.addJob @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:7980
+_.rc.addLowPriorityJob @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:7970
+_.a.throttledSend @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8198
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8198
+Ko @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5250
+next @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5251
+V @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5256
+Promise.then
+O @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+Promise.then
+O @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5259
+bFZ @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5258
+_.z @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:5260
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8198
+J @ scheduler.js:33
+Q @ scheduler.js:42
+f.L @ scheduler.js:38
+(anonymous) @ web-animations-next-lite.min.js:96
+requestAnimationFrame
+window.requestAnimationFrame @ web-animations-next-lite.min.js:96
+f.start @ scheduler.js:43
+K @ scheduler.js:29
+(anonymous) @ scheduler.js:48
+setTimeout
+apply @ VM585:1392
+ka @ scheduler.js:48
+GY.addJob @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:7980
+QP.parkOrScheduleJob @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:14955
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:40500
+setTimeout
+apply @ VM585:1392
+_.a.attached @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:40500
+N1c.c.attached @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:2031
+b.connectedCallback @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9023
+_.t0 @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:9085
+window.Polymer @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:8746
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:2042
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3458
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:3486
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:40636
+(anonymous) @ m=kevlar_base_module,kevlar_main_module,kevlar_base_sync_mod_chunk:43050
+10:46:16.434 VM839:1 WebGPU is experimental on this platform. See https://github.com/gpuweb/gpuweb/wiki/Implementation-Status#implementation-status
+10:46:16.435 VM839:1 Failed to create WebGPU Context Provider
+eval @ VM839:1
+ab @ VM831:1
+AV @ VM797:1
+eval @ @AriDugarte:1
+il @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+c @ VM794:1
+requestIdleCallback
+eval @ VM839:1
+ab @ VM831:1
+AV @ VM797:1
+eval @ @AriDugarte:1
+il @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+requestIdleCallback.timeout @ @AriDugarte:1
+requestIdleCallback
+VO @ @AriDugarte:1
+Tz @ @AriDugarte:1
+nZ @ @AriDugarte:1
+eval @ @AriDugarte:1
+m @ @AriDugarte:1
